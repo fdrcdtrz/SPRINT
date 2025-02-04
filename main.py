@@ -1,7 +1,7 @@
-import numpy as np
-import random
 from initialization import *
 from optimization import *
+import numpy as np
+import random
 
 
 class Service:
@@ -20,10 +20,11 @@ class Service:
 
 
 class Resource:
-    def __init__(self, id, availability, kpi_resource):
+    def __init__(self, id, availability, kpi_resource, kvi_resource):
         self.id = id
         self.availability = availability
         self.kpi_resource = np.array(kpi_resource)
+        self.kvi_resource = np.array(kvi_resource)
 
     # da aggiunere i parametri per il calcolo di KVI (n_c, P_c, u_c, n_m, P_m, speed, fpc, N0, lambda)
 
@@ -33,7 +34,19 @@ if __name__ == '__main__':
 
     # inizializzo J servizi e N risorse
     services = [Service(j, demand=random.randint(1, 5), min_kpi=0.5, min_kvi=0.5, kpi_service=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)],
-                        kvi_service=[random.randint(1, 50), random.randint(1, 5), random], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33]) for j in range(5)]
-    resources = [Resource(n, availability=random.randint(1, 10), kpi_resource=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)]) for n in range(10)]
+                        kvi_service=[random.randint(1, 50), random.randint(1, 5), random.uniform(1e6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33]) for j in range(5)]
+
+    resources = [Resource(n, availability=random.randint(1, 10), kpi_resource=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e6,1)]) for n in range(10)]
+
+    # test
+
+    normalized_kpi = normalized_kpi(services, resources)
+    normalized_kvi = normalized_kvi(services, resources)
+
+    for (res_id, serv_id), q_x in normalized_kpi.items():
+        print(f"Resource {res_id} takes on service {serv_id} with a global kpi of {q_x}")
+
+    for (res_id, serv_id), v_x in normalized_kvi.items():
+        print(f"Resource {res_id} takes on service {serv_id} with a global kvi of {v_x}")
 
 
