@@ -15,9 +15,6 @@ class Service:
         self.weights_kpi = np.array(weights_kpi)  # per calcolo kpi globale
         self.weights_kvi = np.array(weights_kvi)  # per calcolo kvi globale
 
-        # da aggiunere i parametri per il calcolo di KVI, tipo potenza, dimensione della richiesta, etc...
-        # (FLOPS, P_s)
-
 
 class Resource:
     def __init__(self, id, availability, kpi_resource, kvi_resource):
@@ -53,3 +50,13 @@ if __name__ == '__main__':
     Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi)
     V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I)
     Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I)
+
+    pareto_solutions = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
+                                                delta=0.01)
+
+    #plot_pareto_front(pareto_solutions)
+
+    pareto_solutions_filtered = filter_pareto_solutions(pareto_solutions)
+    plot_pareto_front(pareto_solutions_filtered)
+
+    final_solution = cut_and_solve(services, resources, normalized_kpi, normalized_kvi)
