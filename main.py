@@ -33,10 +33,10 @@ class Resource:
 if __name__ == '__main__':
 
     # inizializzo J servizi e N risorse
-    services = [Service(j, demand=random.randint(1, 5), min_kpi=0.5, min_kvi=0.5, kpi_service=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)],
-                        kvi_service=[random.randint(1, 50), random.randint(1, 5), random.uniform(1e6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33]) for j in range(5)]
+    services = [Service(j, demand=random.randint(1, 5), min_kpi=0.1, min_kvi=0.1, kpi_service=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)],
+                        kvi_service=[random.randint(10, 50), random.randint(1, 5), random.uniform(1e-6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33]) for j in range(5)]
 
-    resources = [Resource(n, availability=random.randint(1, 10), kpi_resource=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e6,1)]) for n in range(10)]
+    resources = [Resource(n, availability=random.randint(10, 50), kpi_resource=[random.randint(1, 20), random.randint(1, 20), random.randint(1, 20), random.randint(1, 20)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)]) for n in range(10)]
 
     # test
 
@@ -49,4 +49,7 @@ if __name__ == '__main__':
     for (res_id, serv_id), v_x in normalized_kvi.items():
         print(f"Resource {res_id} takes on service {serv_id} with a global kvi of {v_x}")
 
-
+    V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi)
+    Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi)
+    V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I)
+    Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I)
