@@ -5,6 +5,7 @@ TODO:
 4. calcolo kvi
 5. rivedere cut and solveeee reduced cost da correggere
 6. rivedere aggiornamento di epsilon!! non modifico delta, modifico la soluzione che va da QN a QI, quindi da migliore per V (VI) a peggiore per V (VN)
+7. dubbio: valore massimo dei kpi singoli e globali sommati?
 
 
 # Ottimizzazione Multi-Obiettivo con Metodo Epsilon-Constraint esatto e Cut-and-Solve
