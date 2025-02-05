@@ -1,8 +1,8 @@
-from gurobipy import Model
-from gurobipy import GRB
+from gurobipy import Model, GRB
 from initialization import *
 import pandas as pd
 import matplotlib.pyplot as plt
+
 
 # script per definizione funzione di salvataggio risultati, problema di ottimizzazione per calcolo di Q^I, V^I, Q^N, V^N
 def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, filename="results.csv"):
@@ -35,6 +35,7 @@ def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, fil
 
     df.to_csv(filename, index=False)
     print(f"\nSaved in {filename}")
+
 
 def plot_pareto_front(pareto_solutions):
     pareto_solutions.sort()  # Ordina le soluzioni per KPI
@@ -182,6 +183,10 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
     # Creazione del modello
     model = Model("Maximize_KPI_constraining_V")
 
+    print(f"DEBUG: Q_I passato a q_nadir = {V_I}")
+    print(
+        f"DEBUG: KPI iniziale (prima di ottimizzazione con vincolo V_I) = {sum(normalized_kpi[(r.id, s.id)] for s in services for r in resources)}")
+
     # Creazione delle variabili di decisione x[s, r] ∈ {0,1}
     x = model.addVars(
         [(s.id, r.id) for s in services for r in resources],
@@ -191,7 +196,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
 
     # Vincolo 1: il valore massimo che l'obiettivo V(X) può assumere è pari a V_I
     model.addConstr(
-        sum(normalized_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) == V_I,
+        sum(normalized_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= V_I - 0.01, #== V_I,
         "kvi_equals_max_kvi_value"
     )
 
@@ -229,6 +234,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
     )
 
     model.optimize()
+    print(f"DEBUG: Q_N calcolato = {model.ObjVal}")
 
     # Risultati
     print("\nSoluzione Ottima:")
@@ -316,6 +322,231 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I):
     return V_N
 
 
+def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I, delta):
+
+    pareto_solutions = []
+    epsilon = Q_N - delta  # Inizializza epsilon con il nadir point
+
+    while epsilon >= Q_I:
+        model = Model("Exact_Epsilon_Constraint")
+
+        # Variabili di decisione
+        x = model.addVars(
+            [(s.id, r.id) for s in services for r in resources],
+            vtype=GRB.BINARY, name="x"
+        )
+
+        # Vincolo epsilon sul KPI
+        model.addConstr(
+            sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= epsilon
+        )
+
+        # Vincolo KPI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+        for s in services:
+            for r in resources:
+                model.addConstr(
+                    (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+                    f"kpi_threshold_{s.id}_{r.id}"
+                )
+
+        # Vincolo KVI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+        for s in services:
+            for r in resources:
+                model.addConstr(
+                    (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+                    f"kvi_threshold_{s.id}_{r.id}"
+                )
+
+        # Vincoli standard (assegnazione, capacità)
+        for s in services:
+            model.addConstr(sum(x[s.id, r.id] for r in resources) == 1)
+
+        for r in resources:
+            model.addConstr(sum(x[s.id, r.id] * s.demand for s in services) <= r.availability)
+
+
+        # Funzione obiettivo: massimizzare KVI
+        model.setObjective(
+            sum(normalized_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
+            GRB.MAXIMIZE
+        )
+
+        # Risoluzione
+        model.optimize()
+
+        if model.status == GRB.OPTIMAL:
+            kpi_value = sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id].x for s in services for r in resources)
+            kvi_value = model.ObjVal
+            pareto_solutions.append((kpi_value, kvi_value))
+
+        # Aggiornato epsilon al valore di KVI trovato
+        epsilon = kvi_value - delta
+
+    return pareto_solutions
+
+
+# tolgo soluzioni dominate (i hope it works)
+def filter_pareto_solutions(solutions):
+    pareto_front = []
+
+    for candidate in solutions:
+        q_candidate, v_candidate = candidate
+        dominated = False
+
+        for other in solutions:
+            q_other, v_other = other
+
+            if (q_other >= q_candidate and v_other >= v_candidate) and (q_other > q_candidate or v_other > v_candidate):
+                dominated = True
+                break
+        if not dominated:
+            pareto_front.append(candidate)
+
+    return pareto_front
+
+
+def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I, delta, max_iters=10,
+                                     tolerance=1e-5, cost_threshold=0.01):
+
+    pareto_solutions = []
+    epsilon = Q_N - delta  # epsilon inizialmente parte da qui. gradualmente portato verso Q_I ovvero V_N
+
+    while epsilon <= Q_I:
+
+        # Risolvo problema denso rilassato per 1) cercare UB 2) identificare variabili dello sparse problem. in
+        # quanto rilassato, vincolo di integrità scompare e x[s,r] in [0,1] invece che {0,1}
+        dense_model = Model(f"Dense_{epsilon}")
+        x_dense = dense_model.addVars(
+            [(s.id, r.id) for s in services for r in resources],
+            vtype=GRB.CONTINUOUS, lb=0, ub=1, name="x"
+        )
+
+        # Vincolo epsilon su KPI
+        dense_model.addConstr(
+            sum(normalized_kpi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources) >= epsilon
+        )
+
+        # Vincolo KPI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+        for s in services:
+            for r in resources:
+                dense_model.addConstr(
+                    (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x_dense[s.id, r.id] >= 0,
+                    f"kpi_threshold_{s.id}_{r.id}"
+                )
+
+        # Vincolo KVI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+        for s in services:
+            for r in resources:
+                dense_model.addConstr(
+                    (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x_dense[s.id, r.id] >= 0,
+                    f"kvi_threshold_{s.id}_{r.id}"
+                )
+
+        # Vincolo associazione un servizio -> una risorsa
+        for s in services:
+            dense_model.addConstr(sum(x_dense[s.id, r.id] for r in resources) == 1)
+
+        # Vincolo disponibilità non violata
+        for r in resources:
+            dense_model.addConstr(sum(x_dense[s.id, r.id] * s.demand for s in services) <= r.availability)
+
+
+        # Obiettivo: Massimizzare KVI
+        dense_model.setObjective(
+            sum(normalized_kvi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources),
+            GRB.MAXIMIZE
+        )
+
+        dense_model.optimize()
+        UB = dense_model.ObjVal  # Upper Bound iniziale
+
+        # Seleziono solo variabili con costo ridotto entro una soglia /
+        # da rivedere tolleranza. alfa nei paper è un valore positivo
+
+        fractional_vars = [(var, var.x, var.RC) for var in dense_model.getVars() if tolerance < var.x < 1 - tolerance]
+        fractional_vars.sort(key=lambda v: v[2], reverse=True)  # Ordina per costo ridotto
+        selected_vars = [var.VarName for var, _, rc in fractional_vars if abs(rc) >= cost_threshold]
+
+
+        # Una volta trovate queste variabili, le posso utilizzare nel problema sparso da risolvere esattamente. Le
+        # varibili in questione sono solo quelle selezionate.
+
+        sparse_model = Model(f"Sparse_{epsilon}")
+        x_sparse = sparse_model.addVars(
+            selected_vars,
+            vtype=GRB.BINARY, name="x"
+        )
+
+        # Vincolo KPI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+        for s in services:
+            for r in resources:
+                sparse_model.addConstr(
+                    (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x_sparse[s.id, r.id] >= 0,
+                    f"kpi_threshold_{s.id}_{r.id}"
+                )
+
+        # Vincolo KVI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+        for s in services:
+            for r in resources:
+                sparse_model.addConstr(
+                    (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[s.id, r.id] >= 0,
+                    f"kvi_threshold_{s.id}_{r.id}"
+                )
+
+
+        # Stessi vincoli di capacità e assegnazione
+        for s in services:
+            sparse_model.addConstr(
+                sum(x_sparse[f"x[{s.id},{r.id}]"] for r in resources if f"x[{s.id},{r.id}]" in x_sparse) == 1)
+
+        for r in resources:
+            sparse_model.addConstr(
+                sum(x_sparse[f"x[{s.id},{r.id}]"] * s.demand for s in services if
+                    f"x[{s.id},{r.id}]" in x_sparse) <= r.availability
+            )
+
+        # Vincolo epsilon su KPI
+        sparse_model.addConstr(
+            sum(normalized_kpi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"] for s in services if
+                f"x[{s.id},{r.id}]" in x_sparse) >= epsilon
+        )
+
+        # Forza le variabili non selezionate a 0 (ovvero il vincolo 26)
+        for s in services:
+            for r in resources:
+                var_name = f"x[{s.id},{r.id}]"
+                if var_name not in x_sparse:
+                    sparse_model.addConstr(x_dense[s.id, r.id] == 0, name=f"fix_{var_name}")
+
+        # Obiettivo: Massimizzare KVI
+        sparse_model.setObjective(
+            sum(normalized_kvi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"] for s in services if
+                f"x[{s.id},{r.id}]" in x_sparse),
+            GRB.MAXIMIZE
+        )
+
+        # Iterazioni del Cut-and-Solve, procedo fino a che non trovo convergenza
+        for _ in range(max_iters):
+            sparse_model.optimize()
+            LB = sparse_model.ObjVal  # Lower Bound aggiornato
+
+            # Arresto quando trovo convergenza
+            if UB <= LB:
+            #if abs(UB - LB) < tolerance:
+                print(f"Convergenza per epsilon={epsilon}")
+                break
+
+        # Salvo soluzione
+        kpi_value = sum(normalized_kpi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"].x for s in services if
+                        f"x[{s.id},{r.id}]" in x_sparse)
+        kvi_value = sparse_model.ObjVal
+        pareto_solutions.append((kpi_value, kvi_value))
+
+        # Update epsilon: Q(X*) - delta
+        epsilon = kvi_value - delta
+
+    return pareto_solutions
+
 def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I, delta=0.01):
 
     pareto_solutions = []
@@ -385,84 +616,5 @@ def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi
         epsilon += delta
 
     return pareto_solutions
-
-# tolgo soluzioni dominate (i hope it works)
-def filter_pareto_solutions(solutions):
-    pareto_front = []
-
-    for candidate in solutions:
-        q_candidate, v_candidate = candidate
-        dominated = False
-
-        for other in solutions:
-            q_other, v_other = other
-
-            if (q_other >= q_candidate and v_other >= v_candidate) and (q_other > q_candidate or v_other > v_candidate):
-                dominated = True
-                break
-        if not dominated:
-            pareto_front.append(candidate)
-
-    return pareto_front
-
-
-def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, max_iters=100, tolerance=1e-5):
-
-    # Modello rilassato, quindi con vincolo di integrità rilassato
-    model = Model("Cut_and_Solve")
-
-    # Variabili binarie x[s, r] ∈ {0,1} → inizialmente rilassate a continue [0,1]
-    x = model.addVars(
-        [(s.id, r.id) for s in services for r in resources],
-        vtype=GRB.CONTINUOUS,
-        lb=0, ub=1,  # [0,1]
-        name="x"
-    )
-
-    # Vincoli standard
-    for s in services:
-        model.addConstr(sum(x[s.id, r.id] for r in resources) == 1, f"assign_service_{s.id}")
-
-    for r in resources:
-        model.addConstr(
-            sum(x[s.id, r.id] * s.demand for s in services) <= r.availability,
-            f"capacity_{r.id}"
-        )
-
-    # Funzione obiettivo: massimizzare KPI
-    model.setObjective(
-        sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
-        GRB.MAXIMIZE
-    )
-
-    # Risolvi il problema rilassato
-    model.optimize()
-
-    print(f"Lower Bound iniziale: {model.ObjVal}")
-
-    for _ in range(max_iters):
-        # Variabili frazionarie
-        fractional_vars = [(var, var.x) for var in model.getVars() if tolerance < var.x < 1 - tolerance]
-
-        if not fractional_vars:
-            print("Soluzione intera trovata!")
-            break
-
-        # Aggiunta taglio
-        var, value = fractional_vars[0]  # Prima variabile frazionaria trovata
-        model.addConstr(var <= round(value), name=f"cut_{var.VarName}")  # Da rivedere reduced cut!!!
-
-        # Risoluzione problema con cut
-        model.optimize()
-
-        print(f"Iterazione {_ + 1}: KPI = {model.ObjVal}")
-
-    print("\nSoluzione finale:")
-    for s in services:
-        for r in resources:
-            if round(x[s.id, r.id].x) == 1:
-                print(f"Servizio {s.id} assegnato a risorsa {r.id}")
-
-    return x
 
 
