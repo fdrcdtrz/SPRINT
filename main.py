@@ -30,7 +30,10 @@ class Resource:
 
 if __name__ == '__main__':
 
-    # inizializzo J servizi e N risorse come liste di oggetti resource quindi mi serve services[ind].parametro[index] per get elemento
+    # inizializzo J servizi e N risorse.
+    # Questi sono liste di oggetti Resource e Service: per .get() ogni elemento index di una singola istanza, la ind,
+    # mi serve services[ind].parametro[index]
+
     services = [Service(j, demand=random.randint(1, 5), min_kpi=0.001, min_kvi=0.001, kpi_service=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)],
                         kvi_service=[random.randint(10, 50), random.randint(1, 5), random.uniform(1e-6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33]) for j in range(5)]
 
@@ -48,24 +51,24 @@ if __name__ == '__main__':
     #     print(f"Resource {res_id} takes on service {serv_id} with normalized kpis of {norm_kpi}")
 
 
-    for (res_id, serv_id), v_x in weighted_sum_kvi.items():
-        print(f"Resource {res_id} takes on service {serv_id} with a global kvi of {v_x}")
-
-    for (res_id, serv_id), norm_kvi in normalized_kvi.items():
-        print(f"Resource {res_id} takes on service {serv_id} with normalized kvis of {norm_kvi}")
-
-    # V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi)
-    # Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi)
-    # V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I)
-    # Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I)
-
+    # for (res_id, serv_id), v_x in weighted_sum_kvi.items():
+    #     print(f"Resource {res_id} takes on service {serv_id} with a global kvi of {v_x}")
     #
-    # pareto_solutions_exact = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I, delta=0.01)
-    #
-    # plot_pareto_front(pareto_solutions_exact)
+    # for (res_id, serv_id), norm_kvi in normalized_kvi.items():
+    #     print(f"Resource {res_id} takes on service {serv_id} with normalized kvis of {norm_kvi}")
 
-    #pareto_solutions_filtered = filter_pareto_solutions(pareto_solutions)
-    #plot_pareto_front(pareto_solutions_filtered)
+    V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
+    Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
+    V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I)
+    Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I)
+
+
+    pareto_solutions_exact = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.01)
+
+    plot_pareto_front(pareto_solutions_exact)
+
+    pareto_solutions_filtered = filter_pareto_solutions(pareto_solutions_exact)
+    plot_pareto_front(pareto_solutions_filtered)
     #
     # final_solution = cut_and_solve(services, resources, normalized_kpi, normalized_kvi)
 

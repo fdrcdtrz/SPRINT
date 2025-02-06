@@ -1,7 +1,6 @@
 from main import *
 import numpy as np
 
-
 # funzioni per la normalizzazione attributi KPI e indicatori KVI e rispettivi Q e V
 
 

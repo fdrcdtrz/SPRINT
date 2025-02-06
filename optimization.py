@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 
 # script per definizione funzione di salvataggio risultati, problema di ottimizzazione per calcolo di Q^I, V^I, Q^N, V^N
-def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, filename="results.csv"):
+def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, filename="results.csv"):
     results = []
 
     for s in services:
@@ -19,7 +19,9 @@ def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, fil
             results.append([
                 s.id, r.id, assigned,
                 normalized_kpi.get((r.id, s.id), 0),
-                normalized_kvi.get((r.id, s.id), 0),
+                normalized_kvi.get((r.id, s.id), 0), # chiave più nulla se non esiste, ovvero zero
+                weighted_sum_kpi.get((r.id, s.id), 0),
+                weighted_sum_kvi.get((r.id, s.id), 0),
                 s.min_kpi, s.min_kvi,
                 list_s_kpi_service, list_s_kvi_service,
                 list_r_kpi_resource, list_r_kvi_resource
@@ -30,7 +32,8 @@ def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, fil
         "Normalized_KPI", "Normalized_KVI",
         "Min_KPI", "Min_KVI",
         "KPI_Service", "KVI_Service",
-        "KPI_Resource", "KVI_Resource"
+        "KPI_Resource", "KVI_Resource",
+        "Global_KPI", "Global_KVI"
     ])
 
     df.to_csv(filename, index=False)
@@ -42,16 +45,16 @@ def plot_pareto_front(pareto_solutions):
     kpi_values, kvi_values = zip(*pareto_solutions)  # Separazione in due liste
 
     plt.figure(figsize=(8, 6))
-    plt.plot(kpi_values, kvi_values, marker='o', linestyle='-', color='b', label="Fronte di Pareto")
+    plt.plot(kpi_values, kvi_values, marker='o', linestyle='-', color='b', label="Pareto Optimal-Set")
     plt.xlabel("KPI Totale")
     plt.ylabel("KVI Totale")
-    plt.title("Fronte di Pareto KPI-KVI")
+    plt.title("Pareto Front")
     plt.grid(True)
     plt.legend()
     plt.show()
 
 
-def optimize_kpi(services, resources, normalized_kpi, normalized_kvi):
+def optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi):
 
     # Creazione del modello
     model = Model("Maximize_KPI")
@@ -67,7 +70,7 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi):
     for s in services:
         for r in resources:
             model.addConstr(
-                (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+                (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
                 f"kpi_threshold_{s.id}_{r.id}"
             )
 
@@ -75,7 +78,7 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi):
     for s in services:
         for r in resources:
             model.addConstr(
-                (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+                (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
                 f"kvi_threshold_{s.id}_{r.id}"
             )
 
@@ -92,7 +95,7 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi):
 
     # Funzione obiettivo: massimizzare KPI totali
     model.setObjective(
-        sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
+        sum(weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
         GRB.MAXIMIZE
     )
 
@@ -110,12 +113,12 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi):
 
     Q_I = model.ObjVal
 
-    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, filename="results_optimization_qi.csv")
+    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, filename="results_optimization_qi.csv")
 
     return Q_I
 
 
-def optimize_kvi(services, resources, normalized_kpi, normalized_kvi):
+def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi):
 
     # Creazione del modello
     model = Model("Maximize_KVI")
@@ -131,7 +134,7 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi):
     for s in services:
         for r in resources:
             model.addConstr(
-                (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+                (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
                 f"kpi_threshold_{s.id}_{r.id}"
             )
 
@@ -139,7 +142,7 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi):
     for s in services:
         for r in resources:
             model.addConstr(
-                (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+                (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
                 f"kvi_threshold_{s.id}_{r.id}"
             )
 
@@ -156,7 +159,7 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi):
 
     # Funzione obiettivo: massimizzare KPI totali
     model.setObjective(
-        sum(normalized_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
+        sum(weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
         GRB.MAXIMIZE
     )
 
@@ -172,20 +175,16 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi):
     # Valore ottimo dell'obiettivo
     print(f"\nValore ottimale di KVI: {model.ObjVal}")
 
-    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, filename="results_optimization_vi.csv")
+    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, filename="results_optimization_vi.csv")
 
     V_I = model.ObjVal
 
     return V_I
 
 
-def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
+def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I):
     # Creazione del modello
     model = Model("Maximize_KPI_constraining_V")
-
-    print(f"DEBUG: Q_I passato a q_nadir = {V_I}")
-    print(
-        f"DEBUG: KPI iniziale (prima di ottimizzazione con vincolo V_I) = {sum(normalized_kpi[(r.id, s.id)] for s in services for r in resources)}")
 
     # Creazione delle variabili di decisione x[s, r] ∈ {0,1}
     x = model.addVars(
@@ -196,7 +195,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
 
     # Vincolo 1: il valore massimo che l'obiettivo V(X) può assumere è pari a V_I
     model.addConstr(
-        sum(normalized_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= V_I - 0.01, #== V_I,
+        sum(weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= V_I - 0.01, #== V_I,
         "kvi_equals_max_kvi_value"
     )
 
@@ -204,7 +203,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
     for s in services:
         for r in resources:
             model.addConstr(
-                (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+                (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
                 f"kpi_threshold_{s.id}_{r.id}"
             )
 
@@ -212,7 +211,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
     for s in services:
         for r in resources:
             model.addConstr(
-                (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+                (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
                 f"kvi_threshold_{s.id}_{r.id}"
             )
 
@@ -229,7 +228,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
 
     # Funzione obiettivo: massimizzare KPI totali
     model.setObjective(
-        sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
+        sum(weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
         GRB.MAXIMIZE
     )
 
@@ -249,12 +248,12 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, V_I):
 
     Q_N = model.ObjVal
 
-    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, filename="results_optimization_qn.csv")
+    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, filename="results_optimization_qn.csv")
 
     return Q_N
 
 
-def v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I):
+def v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I):
     # Creazione del modello
     model = Model("Maximize_KVI_constraining_Q")
 
@@ -267,7 +266,7 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I):
 
     # Vincolo 1: il valore massimo che l'obiettivo Q(X) può assumere è pari a Q_I
     model.addConstr(
-        sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) == Q_I,
+        sum(weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) == Q_I,
         "kpi_equals_max_kpi_value"
     )
 
@@ -275,7 +274,7 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I):
     for s in services:
         for r in resources:
             model.addConstr(
-                (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+                (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
                 f"kpi_threshold_{s.id}_{r.id}"
             )
 
@@ -283,7 +282,7 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I):
     for s in services:
         for r in resources:
             model.addConstr(
-                (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+                (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
                 f"kvi_threshold_{s.id}_{r.id}"
             )
 
@@ -300,7 +299,7 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I):
 
     # Funzione obiettivo: massimizzare KPI totali
     model.setObjective(
-        sum(normalized_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
+        sum(weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
         GRB.MAXIMIZE
     )
 
@@ -316,14 +315,14 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, Q_I):
     # Valore ottimo dell'obiettivo
     print(f"\nValore ottimale di KVI: {model.ObjVal}")
 
-    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, filename="results_optimization_vn.csv")
+    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, filename="results_optimization_vn.csv")
 
     V_N = model.ObjVal
 
     return V_N
 
 
-def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I, delta):
+def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta):
 
     pareto_solutions = []
     epsilon = Q_N - delta  # Inizializza epsilon con il nadir point
@@ -339,14 +338,14 @@ def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi
 
         # Vincolo epsilon sul KPI
         model.addConstr(
-            sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= epsilon
+            sum(weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= epsilon
         )
 
         # Vincolo KPI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
         for s in services:
             for r in resources:
                 model.addConstr(
-                    (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+                    (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
                     f"kpi_threshold_{s.id}_{r.id}"
                 )
 
@@ -354,7 +353,7 @@ def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi
         for s in services:
             for r in resources:
                 model.addConstr(
-                    (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+                    (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
                     f"kvi_threshold_{s.id}_{r.id}"
                 )
 
@@ -368,7 +367,7 @@ def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi
 
         # Funzione obiettivo: massimizzare KVI
         model.setObjective(
-            sum(normalized_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
+            sum(weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
             GRB.MAXIMIZE
         )
 
@@ -376,7 +375,7 @@ def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi
         model.optimize()
 
         if model.status == GRB.OPTIMAL:
-            kpi_value = sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id].x for s in services for r in resources)
+            kpi_value = sum(weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id].x for s in services for r in resources)
             kvi_value = model.ObjVal
             pareto_solutions.append((kpi_value, kvi_value))
 
@@ -386,7 +385,7 @@ def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi
     return pareto_solutions
 
 
-# tolgo soluzioni dominate (i hope it works)
+# tolgo soluzioni dominate (IT DOESNT WORK DA CAMBIAREEEEE)
 def filter_pareto_solutions(solutions):
     pareto_front = []
 
@@ -405,7 +404,7 @@ def filter_pareto_solutions(solutions):
 
     return pareto_front
 
-def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I, delta, max_iters=10,
+def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta, max_iters=10,
                                      tolerance=1e-5, cost_threshold=0.01):
 
     pareto_solutions = []
@@ -422,7 +421,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
 
         # Vincolo epsilon su KPI
         dense_model.addConstr(
-            sum(normalized_kpi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources) >= epsilon,
+            sum(weighted_sum_kpi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources) >= epsilon,
             "epsilon_kpi"
         )
 
@@ -430,7 +429,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
         for s in services:
             for r in resources:
                 dense_model.addConstr(
-                    (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x_dense[s.id, r.id] >= 0,
+                    (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_dense[s.id, r.id] >= 0,
                     f"kpi_threshold_{s.id}_{r.id}"
                 )
 
@@ -438,7 +437,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
         for s in services:
             for r in resources:
                 dense_model.addConstr(
-                    (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x_dense[s.id, r.id] >= 0,
+                    (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_dense[s.id, r.id] >= 0,
                     f"kvi_threshold_{s.id}_{r.id}"
                 )
 
@@ -452,7 +451,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
 
         # Obiettivo: Massimizzare KVI
         dense_model.setObjective(
-            sum(normalized_kvi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources),
+            sum(weighted_sum_kvi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources),
             GRB.MAXIMIZE
         )
 
@@ -460,6 +459,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
         UB = dense_model.ObjVal  # Upper Bound iniziale
 
         # Seleziono solo variabili con costo ridotto entro una soglia
+        # da rivedere tutto da qui
         fractional_vars = [(var, var.x, var.RC) for var in dense_model.getVars() if tolerance < var.x < 1 - tolerance]
         fractional_vars.sort(key=lambda v: v[2], reverse=True)  # Ordina per costo ridotto
         selected_vars = [var.VarName for var, _, rc in fractional_vars if abs(rc) >= cost_threshold]
@@ -475,7 +475,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
         for s in services:
             for r in resources:
                 sparse_model.addConstr(
-                    (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x_sparse[s.id, r.id] >= 0,
+                    (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_sparse[s.id, r.id] >= 0,
                     f"kpi_threshold_{s.id}_{r.id}"
                 )
 
@@ -483,7 +483,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
         for s in services:
             for r in resources:
                 sparse_model.addConstr(
-                    (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[s.id, r.id] >= 0,
+                    (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[s.id, r.id] >= 0,
                     f"kvi_threshold_{s.id}_{r.id}"
                 )
 
@@ -500,7 +500,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
 
         # Vincolo epsilon su KPI
         sparse_model.addConstr(
-            sum(normalized_kpi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"] for s in services if
+            sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"] for s in services if
                 f"x[{s.id},{r.id}]" in x_sparse) >= epsilon
         )
 
@@ -513,7 +513,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
 
         # Obiettivo: Massimizzare KVI
         sparse_model.setObjective(
-            sum(normalized_kvi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"] for s in services if
+            sum(weighted_sum_kvi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"] for s in services if
                 f"x[{s.id},{r.id}]" in x_sparse),
             GRB.MAXIMIZE
         )
@@ -529,7 +529,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
                 break
 
         # Salvo soluzione
-        kpi_value = sum(normalized_kpi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"].x for s in services if
+        kpi_value = sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"].x for s in services if
                         f"x[{s.id},{r.id}]" in x_sparse)
         kvi_value = sparse_model.ObjVal
         pareto_solutions.append((kpi_value, kvi_value))
@@ -682,7 +682,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I,
 #
 #     return pareto_solutions
 #
-def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I, delta=0.01):
+def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.01):
 
     pareto_solutions = []
     epsilon = Q_N - delta  # Valore iniziale di epsilon
@@ -702,7 +702,7 @@ def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi
 
         # Vincolo epsilon-constraint sul KPI
         model.addConstr(
-            sum(normalized_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= epsilon,
+            sum(weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= epsilon,
             "epsilon_kpi"
         )
 
@@ -710,11 +710,11 @@ def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi
         for s in services:
             for r in resources:
                 model.addConstr(
-                    (normalized_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+                    (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
                     f"kpi_threshold_{s.id}_{r.id}"
                 )
                 model.addConstr(
-                    (normalized_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+                    (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
                     f"kvi_threshold_{s.id}_{r.id}"
                 )
 
@@ -731,7 +731,7 @@ def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi
 
         # Funzione obiettivo: massimizzare KVI
         model.setObjective(
-            sum(normalized_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
+            sum(weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
             GRB.MAXIMIZE
         )
 
@@ -741,7 +741,7 @@ def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi
         # Salva la soluzione
         if model.status == GRB.OPTIMAL:
             kpi_value = sum(
-                normalized_kpi[(r.id, s.id)] * x[s.id, r.id].x for s in services for r in resources
+                weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id].x for s in services for r in resources
             )
             kvi_value = model.ObjVal
             pareto_solutions.append((kpi_value, kvi_value))
