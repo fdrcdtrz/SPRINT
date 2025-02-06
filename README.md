@@ -4,7 +4,8 @@ TODO:
 3. Da aggiungere da qualche parte la definizione di questi due parametri: g_sj^{r_n}, g_sj^{r_n, e}, guadagno canale che dipende da servizi e risorse
 4. calcolo kvi
 5. rivedere cut and solveeee reduced cost da correggere
-6. rivedere aggiornamento di epsilon!! non modifico delta, modifico la soluzione che va da QN a QI, quindi da migliore per V (VI) a peggiore per V (VN)
+6. 
+7. dubbio: valore massimo dei kpi singoli e globali sommati?
 
 
 # Ottimizzazione Multi-Obiettivo con Metodo Epsilon-Constraint esatto e Cut-and-Solve
