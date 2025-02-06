@@ -469,6 +469,12 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_
         # selected_vars = [var.VarName for var, _, rc in fractional_vars if abs(rc) >= cost_threshold]
 
         # Sparse model con le variabili selezionate
+        # sparse_model = Model(f"Sparse_{epsilon}")
+        # x_sparse = sparse_model.addVars(
+        #     selected_vars,
+        #     vtype=GRB.BINARY, name="x"
+        # )
+
         sparse_model = Model(f"Sparse_{epsilon}")
         x_sparse = sparse_model.addVars(
             selected_vars,
