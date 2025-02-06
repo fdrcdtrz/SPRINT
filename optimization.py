@@ -412,58 +412,64 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi,
     epsilon = Q_N - delta  # Parto dal nadir point e scendo verso Q_I
     Lbest = float('-inf')
 
-    while epsilon >= Q_I:  # Deve essere >= per garantire la corretta iterazione
-        print("Attuale epsilon = {epsilon}")
+    while epsilon <= Q_I:  # Deve essere >= per garantire la corretta iterazione
+        print(f"Attuale epsilon = {epsilon}")
+
+        # Controllo e rimozione di duplicati
+        unique_pairs = {(s.id, r.id) for s in services for r in resources}
+        print(f"Numero di coppie uniche: {len(unique_pairs)}, Totale coppie: {len(services) * len(resources)}")
 
         # inizio con il problema denso rilassato per primo UB e per identificare costo ridotto delle variabili
         # x in [0,1] e non più (0,1)
 
         dense_model = Model(f"Dense_{epsilon}")
         x_dense = dense_model.addVars(
-            [(s.id, r.id) for s in services for r in resources],
+            unique_pairs,
             vtype=GRB.CONTINUOUS, lb=0, ub=1, name="x"
         )
 
         # Vincolo epsilon
         dense_model.addConstr(
-            sum(weighted_sum_kpi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources) >= epsilon
+            sum(weighted_sum_kpi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources for (s.id, r.id) in unique_pairs) >= epsilon
         )
 
         # Vincoli kpi e kvi minimo
         for s in services:
             for r in resources:
-                dense_model.addConstr((weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_dense[s.id, r.id] >= 0)
-                dense_model.addConstr((weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_dense[s.id, r.id] >= 0)
+                for (s.id, r.id) in unique_pairs:
+                    dense_model.addConstr((weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_dense[s.id, r.id] >= 0)
+                    dense_model.addConstr((weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_dense[s.id, r.id] >= 0)
 
         # Vincoli di assegnazione e capacità
         for s in services:
-            dense_model.addConstr(sum(x_dense[s.id, r.id] for r in resources) == 1)
+            dense_model.addConstr(sum(x_dense[s.id, r.id] for r in resources if (s.id, r.id) in unique_pairs) == 1)
 
         for r in resources:
-            dense_model.addConstr(sum(x_dense[s.id, r.id] * s.demand for s in services) <= r.availability)
+            dense_model.addConstr(sum(x_dense[s.id, r.id] * s.demand for s in services if (s.id, r.id) in unique_pairs) <= r.availability)
 
         # Obiettivo su KVI come sempre
         dense_model.setObjective(
-            sum(weighted_sum_kvi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources),
+            sum(weighted_sum_kvi[(r.id, s.id)] * x_dense[s.id, r.id] for (s.id, r.id) in unique_pairs),
             GRB.MAXIMIZE
         )
 
         dense_model.optimize()
-        UB = dense_model.ObjVal  # Upper Bound iniziale
         if dense_model.status != GRB.OPTIMAL:
             print(f"Status non ottimale: {dense_model.status}")
             break
 
+        UB = dense_model.ObjVal  # Upper Bound iniziale
+
         # Costo ridotto
-        selected_vars = [(var.VarName for var in dense_model.getVars() if var.RC >= cost_threshold)]
+        selected_vars = [(s.id, r.id) for (s.id, r.id) in unique_pairs if x_dense[s.id, r.id].RC >= cost_threshold]
 
         if not selected_vars:
             print(f"Costo ridotto molto alto, lo dimezzo")
             cost_threshold /= 2
-            selected_vars = [(var.VarName for var in dense_model.getVars() if var.RC >= cost_threshold)]
+            selected_vars = [(s.id, r.id) for (s.id, r.id) in unique_pairs if x_dense[s.id, r.id].RC >= cost_threshold]
             continue
 
-        # Con queste varibili, risolvo il problema sparso
+        # Con queste variabili, risolvo il problema sparso
         sparse_model = Model(f"Sparse_{epsilon}")
         x_sparse = sparse_model.addVars(
             selected_vars, vtype=GRB.BINARY, name="x"
@@ -472,8 +478,10 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi,
         # Vincoli classici per le variabili selezionate
         for s in services:
             for r in resources:
-                sparse_model.addConstr((weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_sparse[s.id, r.id] >= 0)
-                sparse_model.addConstr((weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[s.id, r.id] >= 0)
+                for (s, r) in selected_vars():
+                    for (s.id, r.id) in unique_pairs:
+                      sparse_model.addConstr((weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_sparse[s.id, r.id] >= 0)
+                      sparse_model.addConstr((weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[s.id, r.id] >= 0)
 
         # Vincoli di assegnazione e capacità
         for s in services:
@@ -489,7 +497,6 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi,
         )
 
         # Iterazioni del Cut-and-Solve, procedo fino a che non trovo convergenza
-
         for _ in range(max_iters):
             sparse_model.optimize()
             LB = sparse_model.ObjVal  # lower bound
@@ -499,7 +506,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi,
                 print(f"Convergenza avuta per epsilon={epsilon}")
                 break
 
-        kpi_value = sum(weighted_sum_kpi[(r, s)] * x_sparse[s, r].x for s, r in selected_vars)
+        kpi_value = sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[s.id, r.id].x for s in services for r in resources for (s.id, r.id) in selected_vars)
         kvi_value = sparse_model.ObjVal
         pareto_solutions.append((kpi_value, kvi_value))
         print(f"Soluzione trovata: KPI={kpi_value}, KVI={kvi_value}")
@@ -508,6 +515,8 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi,
         epsilon = max(kvi_value - delta, Q_I)
 
     return pareto_solutions
+
+
 
 
 # def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta, max_iters=10,

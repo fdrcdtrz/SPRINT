@@ -37,14 +37,23 @@ def normalized_kpi(services, resources, signs):
 
         for index, attribute in enumerate(kpis_service):  # faccio stessa cosa di sopra considerando una risorsa ben
             # precisa, un servizio ben preciso, ed il valore massimo esposto
-            adjusted_attribute = attribute * signs[index]
             exposed_kpi = resources[index_res].kpi_resource[index]
-            max_val = np.max([resource.kpi_resource[index] for resource in resources])
-            # check per zero
-            if max_val == adjusted_attribute:
-                row[index] = 0
+            if signs[index] == 1:
+                #adjusted_attribute = attribute * signs[index]
+                max_val = np.max([resource.kpi_resource[index] for resource in resources])
+                # check per zero
+                if max_val == attribute:
+                    row[index] = 0
+                else:
+                    row[index] = 1 - (max_val - exposed_kpi) / (max_val - attribute)
             else:
-                row[index] = (exposed_kpi - adjusted_attribute) / (max_val - adjusted_attribute)
+                max_val = np.max([resource.kpi_resource[index] for resource in resources])
+                # check per zero
+                if max_val == attribute:
+                    row[index] = 0
+                else:
+                    row[index] = 1 - (exposed_kpi - max_val) / (max_val - attribute)
+
         return np.abs(row)
 
     for j, service in enumerate(services):
@@ -60,6 +69,7 @@ def normalized_kpi(services, resources, signs):
 
     return normalized_kpi, weighted_sum_kpi
 
+
 def normalized_kvi(services, resources, signs):
     # services[i].kpi_service for i in len(services)
     normalized_kvi = {}
@@ -71,14 +81,23 @@ def normalized_kvi(services, resources, signs):
 
         for index, attribute in enumerate(kvis_service):  # faccio stessa cosa di sopra considerando una risorsa ben
             # precisa, un servizio ben preciso, ed il valore massimo esposto
-            adjusted_attribute = attribute * signs[index]
             exposed_kvi = resources[index_res].kvi_resource[index]
-            max_val = np.max([resource.kvi_resource[index] for resource in resources])
-            # check per zero
-            if max_val == adjusted_attribute:
-                row[index] = 0
+            if signs[index] == 1:
+                #adjusted_attribute = attribute * signs[index]
+                max_val = np.max([resource.kvi_resource[index] for resource in resources])
+                # check per zero
+                if max_val == attribute:
+                    row[index] = 0
+                else:
+                    row[index] = 1 - (max_val - exposed_kvi) / (max_val - attribute)
             else:
-                row[index] = (exposed_kvi - adjusted_attribute) / (max_val - adjusted_attribute)
+                max_val = np.max([resource.kvi_resource[index] for resource in resources])
+                # check per zero
+                if max_val == attribute:
+                    row[index] = 0
+                else:
+                    row[index] = 1 - (exposed_kvi - max_val) / (max_val - attribute)
+
         return np.abs(row)
 
     for j, service in enumerate(services):
@@ -93,6 +112,16 @@ def normalized_kvi(services, resources, signs):
             weighted_sum_kvi[(resource.id, service.id)] = float(v_x)
 
     return normalized_kvi, weighted_sum_kvi
+
+
+def compute_channel_gain_matrix(services, resources):
+    gains = np.zeros((len(services), len(resources)))
+
+    for i, service in enumerate(services):
+        for j, resource in enumerate(resources):
+            gains[i, j] = random.randint(1, 5)
+
+    return gains
 
 
 # funzione calcolo KVI sostenibilità ambientale
