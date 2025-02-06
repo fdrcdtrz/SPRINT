@@ -462,7 +462,6 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_
         # tra tutte le varibili del modello denso prese con getVars(), prendo il costo ridotto e verifico se è al
         # di sopra di una soglia
         selected_vars = [var.VarName for var in dense_model.getVars() if var.RC >= cost_threshold]
-        remaining_vars = [var.VarName for var in dense_model.getVars() if var.RC < cost_threshold]
 
         # fractional_vars = [(var, var.x, var.RC) for var in dense_model.getVars() if tolerance < var.x < 1 - tolerance]
         # fractional_vars.sort(key=lambda v: v[2], reverse=True)  # Ordina per costo ridotto
@@ -477,52 +476,99 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_
 
         sparse_model = Model(f"Sparse_{epsilon}")
         x_sparse = sparse_model.addVars(
-            selected_vars,
+            [(s.id, r.id) for s in services for r in resources],
             vtype=GRB.BINARY, name="x"
         )
 
         # Vincolo KPI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
         for s in services:
             for r in resources:
-                var_name = f"x[{s.id},{r.id}]"
-                if var_name in x_sparse:
+                var_name = f"x[{r.id},{s.id}]"
+                if var_name in selected_vars:
                     sparse_model.addConstr(
-                        (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[var_name] >= 0
+                        (weighted_sum_kvi[(var_name)] - s.min_kvi) * x_sparse[s.id, r.id] >= 0
                     )
+
 
         # Vincolo KVI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
         for s in services:
             for r in resources:
-                var_name = f"x[{s.id},{r.id}]"
-                if var_name in x_sparse:
+                var_name = f"x[{r.id},{s.id}]"
+                if var_name in selected_vars:
                     sparse_model.addConstr(
-                        (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[var_name] >= 0,
-                        f"kvi_threshold_{s.id}_{r.id}"
+                        (weighted_sum_kvi[(var_name)] - s.min_kvi) * x_sparse[s.id, r.id]>= 0,
+                        f"kvi_threshold_{r.id}_{s.id}"
                     )
 
         # Stessi vincoli di capacità e assegnazione
         for s in services:
-            sparse_model.addConstr(
-                sum(x_sparse[f"x[{s.id},{r.id}]"] for r in resources if f"x[{s.id},{r.id}]" in x_sparse) == 1)
+            for r in resources:
+                var_name = f"x[{r.id},{s.id}]"
+                if var_name in selected_vars:
+                    sparse_model.addConstr(
+                        sum(x_sparse[s.id, r.id]) == 1
+                    )
+        # old
 
-        for r in resources:
-            sparse_model.addConstr(
-                sum(x_sparse[f"x[{s.id},{r.id}]"] * s.demand for s in services if
-                    f"x[{s.id},{r.id}]" in x_sparse) <= r.availability
-            )
+        # for s in services:
+        #     var_name = f"x[{s.id},{r.id}]"
+        #     if var_name in selected_vars:
+        #         sparse_model.addConstr(
+        #             sum(x_sparse[f"x[{s.id},{r.id}]"] for r in resources if f"x[{s.id},{r.id}]" in x_sparse) == 1)
 
-        # Vincolo epsilon su KPI
-        sparse_model.addConstr(
-            sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"] for s in services if
-                f"x[{s.id},{r.id}]" in x_sparse) >= epsilon
-        )
 
-        # Forza le variabili non selezionate a 0
         for s in services:
             for r in resources:
-                var_name = f"x[{s.id},{r.id}]"
-                if var_name not in x_sparse:
-                    sparse_model.addConstr(x_dense[s.id, r.id] == 0, name=f"fix_{var_name}")
+                var_name = f"x[{r.id},{s.id}]"
+                if var_name in selected_vars:
+                    sparse_model.addConstr(
+                        sum(x_sparse[s.id, r.id] * s.demand) <= r.availability
+                    )
+
+        # old
+
+        # for r in resources:
+        #     var_name = f"x[{s.id},{r.id}]"
+        #     if var_name in selected_vars:
+        #         sparse_model.addConstr(
+        #             sum(x_sparse[var_name] * s.demand for s in services if
+        #                 f"x[{s.id},{r.id}]" in x_sparse) <= r.availability
+        #         )
+
+        # Vincolo epsilon su KPI
+
+        for s in services:
+            for r in resources:
+                var_name = f"x[{r.id},{s.id}]"
+                if var_name in selected_vars:
+                    sparse_model.addConstr(
+                        sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[s.id, r.id]) >= epsilon
+                    )
+
+        # old
+
+        # var_name = f"x[{s.id},{r.id}]"
+        # if var_name in selected_vars:
+        #     sparse_model.addConstr(
+        #         sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[var_name] for s in services if
+        #             f"x[{s.id},{r.id}]" in x_sparse) >= epsilon
+        #     )
+
+        # Forza le variabili non selezionate a 0
+
+        for s in services:
+            for r in resources:
+                var_name = f"x[{r.id},{s.id}]"
+                if var_name not in selected_vars:
+                    sparse_model.addConstr(
+                        x_sparse[s.id, r.id] == 0
+                    )
+
+        # for s in services:
+        #     for r in resources:
+        #         var_name = f"x[{s.id},{r.id}]"
+        #         if var_name not in selected_vars:
+        #             sparse_model.addConstr(x_sparse[s.id, r.id] == 0, name=f"fix_{var_name}")
 
         # Obiettivo: Massimizzare KVI
         sparse_model.setObjective(
@@ -542,8 +588,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_
                 break
 
         # Salvo soluzione
-        kpi_value = sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[f"x[{s.id},{r.id}]"].x for s in services if
-                        f"x[{s.id},{r.id}]" in x_sparse)
+        kpi_value = sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[s.id, r.id].x for s in services for r in resources)
         kvi_value = sparse_model.ObjVal
         pareto_solutions.append((kpi_value, kvi_value))
 
@@ -551,6 +596,7 @@ def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_
         epsilon = kvi_value - delta
 
     return pareto_solutions
+
 
 
 # def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, Q_N, Q_I, delta, max_iters=10,
