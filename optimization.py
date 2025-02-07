@@ -40,6 +40,45 @@ def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, wei
     print(f"\nSaved in {filename}")
 
 
+def save_epsilon_constraint(services, resources, x, normalized_kpi, normalized_kvi,
+                         weighted_sum_kpi, weighted_sum_kvi, epsilon):
+
+        filename = f"epsilon_{epsilon:.6f}.csv"
+
+        results = []
+
+        for s in services:
+            for r in resources:
+                assigned = round(x[s.id, r.id].x)  # 1 se assegnato, 0 altrimenti
+                list_s_kpi_service = [float(kpi) for kpi in s.kpi_service]
+                list_s_kvi_service = [float(kvi) for kvi in s.kvi_service]
+                list_r_kpi_resource = [float(kpi) for kpi in r.kpi_resource]
+                list_r_kvi_resource = [float(kvi) for kvi in r.kvi_resource]
+
+                results.append([
+                    s.id, r.id, assigned,
+                    normalized_kpi.get((r.id, s.id), 0),
+                    normalized_kvi.get((r.id, s.id), 0),
+                    weighted_sum_kpi.get((r.id, s.id), 0),
+                    weighted_sum_kvi.get((r.id, s.id), 0),
+                    s.min_kpi, s.min_kvi,
+                    list_s_kpi_service, list_s_kvi_service,
+                    list_r_kpi_resource, list_r_kvi_resource
+                ])
+
+        df = pd.DataFrame(results, columns=[
+            "Service_ID", "Resource_ID", "Assigned",
+            "Normalized_KPI", "Normalized_KVI",
+            "Weighted_Sum_KPI", "Weighted_Sum_KVI",  # Fix colonna mancata
+            "Min_KPI", "Min_KVI",
+            "KPI_Service", "KVI_Service",
+            "KPI_Resource", "KVI_Resource"
+        ])
+
+        df.to_csv(filename, index=False)
+        return
+
+
 def plot_pareto_front(pareto_solutions):
     pareto_solutions.sort()  # Ordina le soluzioni per KPI
     kpi_values, kvi_values = zip(*pareto_solutions)  # Separazione in due liste
@@ -378,6 +417,11 @@ def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi
             kpi_value = sum(weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id].x for s in services for r in resources)
             kvi_value = model.ObjVal
             pareto_solutions.append((kpi_value, kvi_value))
+
+        # Salvo
+
+        save_epsilon_constraint(services, resources, x, normalized_kpi, normalized_kvi,
+                                weighted_sum_kpi, weighted_sum_kvi, epsilon)
 
         # Aggiornato epsilon al valore di KVI trovato
         epsilon = kvi_value - delta
