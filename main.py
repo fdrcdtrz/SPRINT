@@ -1,5 +1,6 @@
 from optimization import *
 from initialization import *
+from timeit import default_timer as timer
 import numpy as np
 import random
 
@@ -40,6 +41,7 @@ class Resource:
 
 if __name__ == '__main__':
 
+    start = timer()
     # inizializzo J servizi e N risorse.
     # Questi sono liste di oggetti Resource e Service: per .get() ogni elemento index di una singola istanza, la ind,
     # mi serve services[ind].parametro[index]
@@ -85,3 +87,8 @@ if __name__ == '__main__':
     # pareto_solutions = cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.001, max_iters=10, tolerance=1e-5, cost_threshold=0.1)
     # print(pareto_solutions)
     #plot_pareto_front(pareto_solutions)
+
+    end = timer()
+    print('Time elapsed: ', end - start)
+    with open("execution_time.txt", "a") as file:
+        file.write(f"Servizi: {len(services)}, Risorse: {len(resources)}, Tempo: {end-start:.6f} sec\n")
