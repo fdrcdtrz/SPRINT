@@ -1,11 +1,7 @@
 TODO:
-1. 
-2. 
-3. Da aggiungere da qualche parte la definizione di questi due parametri: g_sj^{r_n}, g_sj^{r_n, e}, guadagno canale che dipende da servizi e risorse
-4. calcolo kvi
-5. rivedere cut and solveeee 
-6. 
-7.
+1. rivedere cut and solveeee
+2. metriche valutazione finali
+
 
 
 # Ottimizzazione Multi-Obiettivo con Metodo Epsilon-Constraint esatto e Cut-and-Solve
