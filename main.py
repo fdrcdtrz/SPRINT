@@ -47,14 +47,29 @@ if __name__ == '__main__':
     # mi serve services[ind].parametro[index]
 
     services = [Service(j, demand=random.randint(1, 5), min_kpi=0.001, min_kvi=0.001, kpi_service=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)],
-                        kvi_service=[random.randint(10, 50), random.randint(1, 5), random.uniform(1e-6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=2000, p_s=50) for j in range(5)]
+                        kvi_service=[random.randint(10, 50), random.randint(1, 5), random.uniform(1e-6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=2000, p_s=50) for j in range(2)]
 
-    resources = [Resource(n, availability=random.randint(10, 50), kpi_resource=[random.randint(1, 20), random.randint(1, 20), random.randint(1, 20), random.randint(1, 20)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)], n_c=20, P_c=50, u_c=20, n_m=20, P_m=50, speed=500, fcp=20000, N0=40, lmbd=0.4) for n in range(10)]
+    resources = [Resource(n, availability=random.randint(10, 50), kpi_resource=[random.randint(1, 20), random.randint(1, 20), random.randint(1, 20), random.randint(1, 20)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)], n_c=20, P_c=50, u_c=20, n_m=20, P_m=50, speed=500, fcp=20000, N0=40, lmbd=0.4) for n in range(5)]
 
     # test: da cambiare ogni normalized_kpi con weighted_sum_kpi e stessa cosa per kvi
 
-    normalized_kpi, weighted_sum_kpi = normalized_kpi(services, resources, [1, -1, 1, -1])
-    normalized_kvi, weighted_sum_kvi = normalized_kvi(services, resources, [1, -1, 1])
+    for service in services:
+        for resource in resources:
+            computation_time = compute_computation_time(service, resource)
+            print(computation_time)
+
+    # TIS
+    normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1, -1])
+    for k, v in weighted_sum_kvi.items():
+        print(f"service: {k[0]}, resource: {k[1]}: {v}")
+
+    normalized_kpi, weighted_sum_kpi = compute_normalized_kpi(services, resources, signs=[1, -1, 1, -1])
+    for k, v in weighted_sum_kpi.items():
+        print(f"service: {k[0]}, resource: {k[1]}: {v}")
+
+
+    # normalized_kpi, weighted_sum_kpi = normalized_kpi(services, resources, [1, -1, 1, -1])
+    # normalized_kvi, weighted_sum_kvi = normalized_kvi(services, resources, [1, -1, 1])
     #
     # for (res_id, serv_id), q_x in weighted_sum_kpi.items():
     #     print(f"Resource {res_id} takes on service {serv_id} with a global kpi of {q_x}")
@@ -69,10 +84,10 @@ if __name__ == '__main__':
     # for (res_id, serv_id), norm_kvi in normalized_kvi.items():
     #     print(f"Resource {res_id} takes on service {serv_id} with normalized kvis of {norm_kvi}")
 
-    # V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
-    # Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
-    # V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I)
-    # Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I)
+    V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
+    Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
+    V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I)
+    Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I)
 
 
     #pareto_solutions_exact = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.01)
@@ -87,6 +102,11 @@ if __name__ == '__main__':
     # pareto_solutions = cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.001, max_iters=10, tolerance=1e-5, cost_threshold=0.1)
     # print(pareto_solutions)
     #plot_pareto_front(pareto_solutions)
+
+    pareto_solutions = cut_and_solve(services, resources, normalized_kpi, normalized_kvi,
+                      weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.1,
+                      max_iters=10, tolerance=1e-5, cost_threshold=1, max_inner_iters=5)
+
 
     end = timer()
     print('Time elapsed: ', end - start)

@@ -2,6 +2,7 @@ from gurobipy import Model, GRB
 from initialization import *
 import pandas as pd
 import matplotlib.pyplot as plt
+import random
 
 
 # script per definizione funzione di salvataggio risultati, problema di ottimizzazione per calcolo di Q^I, V^I, Q^N, V^N
@@ -429,134 +430,214 @@ def exact_epsilon_constraint(services, resources, normalized_kpi, normalized_kvi
     return pareto_solutions
 
 
-# tolgo soluzioni dominate (IT DOESNT WORK DA CAMBIAREEEEE)
-def filter_pareto_solutions(solutions):
-    pareto_front = []
-
-    for candidate in solutions:
-        q_candidate, v_candidate = candidate
-        dominated = False
-
-        for other in solutions:
-            q_other, v_other = other
-
-            if (q_other >= q_candidate and v_other >= v_candidate) and (q_other > q_candidate or v_other > v_candidate):
-                dominated = True
-                break
-        if not dominated:
-            pareto_front.append(candidate)
-
-    return pareto_front
-
-
 def cut_and_solve(services, resources, normalized_kpi, normalized_kvi,
                   weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta,
-                  max_iters=10, tolerance=1e-5, cost_threshold=0.01):
-    pareto_solutions = []
-    epsilon = Q_N - delta  # Parto dal nadir point e scendo verso Q_I
-    Lbest = float('-inf')
+                  max_iters=10, tolerance=1e-5, cost_threshold=0.01, max_inner_iters=5):
 
-    while epsilon <= Q_I:  # Deve essere >= per garantire la corretta iterazione
+    pareto_solutions = []
+    epsilon = min(Q_I, Q_N - delta)  # Parto dal nadir point e scendo verso Q_I
+    stagnant_lb_count = 0  # Conta quante iterazioni LB rimane invariato
+    stagnant_epsilon_count = 0  # Conta quante iterazioni epsilon rimane invariato
+    prev_lb = float('-inf')
+    prev_epsilon = epsilon
+    zero_rc_count = 0
+
+    iter_count = 0
+
+    while epsilon <= Q_I or iter_count < max_iters:
         print(f"Attuale epsilon = {epsilon}")
 
-        # Controllo e rimozione di duplicati
-        unique_pairs = {(s.id, r.id) for s in services for r in resources}
-        print(f"Numero di coppie uniche: {len(unique_pairs)}, Totale coppie: {len(services) * len(resources)}")
+        inner_iter = 0
+        UB, LB = float('inf'), float('-inf')
 
-        # inizio con il problema denso rilassato per primo UB e per identificare costo ridotto delle variabili
-        # x in [0,1] e non più (0,1)
+        while inner_iter < max_inner_iters and abs(UB - LB) >= tolerance:
 
-        dense_model = Model(f"Dense_{epsilon}")
-        x_dense = dense_model.addVars(
-            unique_pairs,
-            vtype=GRB.CONTINUOUS, lb=0, ub=1, name="x"
-        )
+            # inizio con il problema denso rilassato per primo UB e per identificare costo ridotto delle variabili
+            # x in [0,1] e non più (0,1)
 
-        # Vincolo epsilon
-        dense_model.addConstr(
-            sum(weighted_sum_kpi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources for (s.id, r.id) in unique_pairs) >= epsilon
-        )
+            dense_model = Model(f"Dense_{iter_count}_{epsilon:.6f}")
+            unique_keys = list(set((s.id, r.id) for s in services for r in resources))
 
-        # Vincoli kpi e kvi minimo
-        for s in services:
+            x_dense = dense_model.addVars(
+                unique_keys,
+                vtype=GRB.CONTINUOUS, lb=0, ub=1,
+                name=f"x_dense_{iter_count}_{epsilon:.6f}"
+            )
+
+            # Vincolo epsilon
+            dense_model.addConstr(
+                sum(weighted_sum_kpi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources) >= epsilon
+            )
+
+            # Vincoli kpi e kvi minimo
+            for s in services:
+                for r in resources:
+                    for (s.id, r.id) in x_dense:
+                        dense_model.addConstr((weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_dense[s.id, r.id] >= 0)
+                        dense_model.addConstr((weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_dense[s.id, r.id] >= 0)
+
+            # Vincoli di assegnazione e capacità
+            for s in services:
+                dense_model.addConstr(sum(x_dense[s.id, r.id] for r in resources) == 1)
             for r in resources:
-                for (s.id, r.id) in unique_pairs:
-                    dense_model.addConstr((weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_dense[s.id, r.id] >= 0)
-                    dense_model.addConstr((weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_dense[s.id, r.id] >= 0)
+                dense_model.addConstr(sum(x_dense[s.id, r.id] * s.demand for s in services) <= r.availability)
 
-        # Vincoli di assegnazione e capacità
-        for s in services:
-            dense_model.addConstr(sum(x_dense[s.id, r.id] for r in resources if (s.id, r.id) in unique_pairs) == 1)
+            # Funzione obiettivo: massimizzare KVI
+            dense_model.setObjective(
+                sum(weighted_sum_kvi[(r.id, s.id)] * x_dense[s.id, r.id] for s in services for r in resources),
+                GRB.MAXIMIZE
+            )
 
-        for r in resources:
-            dense_model.addConstr(sum(x_dense[s.id, r.id] * s.demand for s in services if (s.id, r.id) in unique_pairs) <= r.availability)
-
-        # Obiettivo su KVI come sempre
-        dense_model.setObjective(
-            sum(weighted_sum_kvi[(r.id, s.id)] * x_dense[s.id, r.id] for (s.id, r.id) in unique_pairs),
-            GRB.MAXIMIZE
-        )
-
-        dense_model.optimize()
-        if dense_model.status != GRB.OPTIMAL:
-            print(f"Status non ottimale: {dense_model.status}")
-            break
-
-        UB = dense_model.ObjVal  # Upper Bound iniziale
-
-        # Costo ridotto
-        selected_vars = [(s.id, r.id) for (s.id, r.id) in unique_pairs if x_dense[s.id, r.id].RC >= cost_threshold]
-
-        if not selected_vars:
-            print(f"Costo ridotto molto alto, lo dimezzo")
-            cost_threshold /= 2
-            selected_vars = [(s.id, r.id) for (s.id, r.id) in unique_pairs if x_dense[s.id, r.id].RC >= cost_threshold]
-            continue
-
-        # Con queste variabili, risolvo il problema sparso
-        sparse_model = Model(f"Sparse_{epsilon}")
-        x_sparse = sparse_model.addVars(
-            selected_vars, vtype=GRB.BINARY, name="x"
-        )
-
-        # Vincoli classici per le variabili selezionate
-        for s in services:
-            for r in resources:
-                for (s, r) in selected_vars():
-                    for (s.id, r.id) in unique_pairs:
-                      sparse_model.addConstr((weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_sparse[s.id, r.id] >= 0)
-                      sparse_model.addConstr((weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[s.id, r.id] >= 0)
-
-        # Vincoli di assegnazione e capacità
-        for s in services:
-            sparse_model.addConstr(sum(x_sparse[s.id, r.id] for r in resources if (s.id, r.id) in selected_vars) == 1)
-
-        for r in resources:
-            sparse_model.addConstr(sum(
-                x_sparse[s.id, r.id] * s.demand for s in services if (s.id, r.id) in selected_vars) <= r.availability)
-
-        # Vincolo epsilon su KPI
-        sparse_model.addConstr(
-            sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[s.id, r.id] for (s.id, r.id) in selected_vars) >= epsilon
-        )
-
-        # Iterazioni del Cut-and-Solve, procedo fino a che non trovo convergenza
-        for _ in range(max_iters):
-            sparse_model.optimize()
-            LB = sparse_model.ObjVal  # lower bound
-            Lbest = min(Lbest, LB)  # scelgo il minimo
-
-            if Lbest >= UB:
-                print(f"Convergenza avuta per epsilon={epsilon}")
+            dense_model.optimize()
+            if dense_model.status != GRB.OPTIMAL:
+                print(f"Status non ottimale: {dense_model.status}")
                 break
 
-        kpi_value = sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[s.id, r.id].x for s in services for r in resources for (s.id, r.id) in selected_vars)
-        kvi_value = sparse_model.ObjVal
-        pareto_solutions.append((kpi_value, kvi_value))
-        print(f"Soluzione trovata: KPI={kpi_value}, KVI={kvi_value}")
+            if dense_model.status == GRB.INFEASIBLE:
+                print("Problem infeasible, skipping iteration.")
+                dense_model.computeIIS()
+                dense_model.write("dense_model.ilp")
+                epsilon -= delta
+                continue
 
-        # Aggiornamento epsilon Q(X*) - delta
-        epsilon = max(kvi_value - delta, Q_I)
+            UB = dense_model.ObjVal  # Upper Bound iniziale
+
+            save_epsilon_constraint(services, resources, x_dense, normalized_kpi, normalized_kvi,
+                                    weighted_sum_kpi, weighted_sum_kvi, epsilon)
+
+
+            # Costo ridotto
+            selected_vars = [(s.id, r.id) for s in services for r in resources if x_dense[s.id, r.id].RC >= cost_threshold]
+            for s in services:
+                for r in resources:
+                    print(x_dense[s.id, r.id].RC)
+
+            if not selected_vars:
+                zero_rc_count += 1
+                print(f"Variabili hanno RC = 0!")
+
+                # Opzione 1: Selezionare un sottoinsieme casuale**
+                if zero_rc_count <= 3:  # Riproviamo 3 volte
+                    selected_vars = random.sample([(s.id, r.id) for s in services for r in resources],
+                                                  min(10, len(services) * len(resources)))
+
+
+            # Se selected_vars è vuoto, riprovo fino a 3 volte dimezzando cost_threshold
+            retries = 0
+            while not selected_vars and retries < 3:
+                cost_threshold /= 2
+                selected_vars = [(s.id, r.id) for s in services for r in resources if x_dense[s.id, r.id].RC >= cost_threshold]
+                retries += 1
+
+            if not selected_vars:
+                print("Nessuna variabile selezionata, salto questa iterazione.")
+                break
+
+            selected_vars = list(set(selected_vars))
+
+            # verifico se ci sono duplicati
+            if len(selected_vars) != len(set(selected_vars)):
+                print("Risoluzione duplicati.")
+
+            # verifico lunghezza dopo il fix
+            if len(selected_vars) == 0:
+                print("selected_vars è ancora vuoto. salto iterazione.")
+                break  # Salta iterazione
+
+            # Con queste variabili, risolvo il problema sparso
+            sparse_model = Model(f"Sparse_{iter_count}_{epsilon:.6f}")
+            x_sparse = sparse_model.addVars(
+                selected_vars, vtype=GRB.BINARY,
+                name=f"x_sparse_{iter_count}_{epsilon:.6f}"
+            )
+
+            # Vincoli solo sulle variabili selezionate
+            for s in services:
+                for r in resources:
+                    if (s.id, r.id) in selected_vars:
+                        sparse_model.addConstr((weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x_sparse[s.id, r.id] >= 0)
+                        sparse_model.addConstr((weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x_sparse[s.id, r.id] >= 0)
+
+            # Vincoli di assegnazione e capacità
+            for s in services:
+                sparse_model.addConstr(sum(x_sparse[s.id, r.id] for r in resources if (s.id, r.id) in selected_vars) == 1)
+
+            for r in resources:
+                sparse_model.addConstr(
+                    sum(x_sparse[s.id, r.id] * s.demand for s in services if (s.id, r.id) in selected_vars) <= r.availability
+                )
+            # Vincolo epsilon su KPI
+            sparse_model.addConstr(
+                sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[s.id, r.id] for s in services for r in resources if (s.id, r.id) in selected_vars) >= epsilon
+            )
+
+            sparse_model.optimize()
+
+            if sparse_model.status == GRB.OPTIMAL:
+                LB = sparse_model.ObjVal  # Aggiorno Lower Bound
+
+                # per salvare e plottare
+                kpi_value = sum(weighted_sum_kpi[(r.id, s.id)] * x_sparse[s.id, r.id].x
+                                for s in services for r in resources if (s.id, r.id) in selected_vars)
+                kvi_value = sparse_model.ObjVal
+
+                pareto_solutions.append((kpi_value, kvi_value))
+
+                # salvo
+                save_results_csv(services, resources, x_sparse, normalized_kpi, normalized_kvi,
+                                 weighted_sum_kpi, weighted_sum_kvi, filename=f"results_sparse_{epsilon:.6f}.csv")
+
+                # aggiorno
+                epsilon = max(kvi_value - delta, Q_I)
+            elif (sparse_model.status == GRB.INFEASIBLE):
+                    print("Sparse Problem infeasible, skipping iteration.")
+                    sparse_model.computeIIS()
+                    sparse_model.write("sparse_model.ilp")
+                    LB = Q_I
+                    epsilon -= delta
+                    continue
+
+            if abs(UB - LB) < tolerance:
+                print(f"convergence for epsilon={epsilon}")
+                break
+
+            LB = sparse_model.ObjVal
+
+            # Se LB non aggiornato, assegno un valore minimo
+            if LB == float('-inf'):
+                print("LB non è aggiornato, quindi LB = Q_I")
+                LB = Q_I
+
+            # Aggiorno epsilon in base a Q(X*) - delta
+            epsilon = max(LB - delta, Q_I)
+
+            # Controllo se LB rimane invariato
+            if LB == prev_lb:
+                stagnant_lb_count += 1
+            else:
+                stagnant_lb_count = 0
+            prev_lb = LB
+
+            # Controllo se epsilon rimane invariato
+            if epsilon == prev_epsilon:
+                stagnant_epsilon_count += 1
+            else:
+                stagnant_epsilon_count = 0
+            prev_epsilon = epsilon
+
+            inner_iter += 1
+
+            # Se LB, epsilon o zero_rc_count non cambiano da 5 iterazioni, forzo l'uscita
+            if stagnant_lb_count >= 5:
+                print("LB non cambia da 5 iterazioni, fermo il ciclo.")
+                return pareto_solutions
+
+            if stagnant_epsilon_count >= 5:
+                print("Epsilon non cambia da 5 iterazioni, fermo il ciclo.")
+                return pareto_solutions
+
+            # iter totale
+            iter_count += 1
 
     return pareto_solutions
 
