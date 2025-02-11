@@ -58,20 +58,20 @@ if __name__ == '__main__':
     # test: da cambiare ogni normalized_kpi con weighted_sum_kpi e stessa cosa per kvi
 
     q_v_big_req(services, [-1, -1, 1, -1], [1, -1, -1])
-    for s in services:
-        print(f"min q rec total {s.min_kpi}, min v rec total {s.min_kvi}")
+    # for s in services:
+    #     print(f"min q rec total {s.min_kpi}, min v rec total {s.min_kvi}")
 
-    # for service in services:
-    #     for resource in resources:
-    #         computation_time = compute_computation_time(service, resource)
+    for service in services:
+        for resource in resources:
+            computation_time = compute_computation_time(service, resource)
             #print(computation_time)
 
     # TIS
-    # normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1, -1]) # trustworthiness inclusiveness sustainability
+    normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1, -1]) # trustworthiness inclusiveness sustainability
     # for k, v in weighted_sum_kvi.items():
     #     print(f"service: {k[0]}, resource: {k[1]}: {v}")
 
-    # normalized_kpi, weighted_sum_kpi = compute_normalized_kpi(services, resources, signs=[-1, -1, 1, -1]) # latenza, utilizzo banda, data rate e plr
+    normalized_kpi, weighted_sum_kpi = compute_normalized_kpi(services, resources, signs=[-1, -1, 1, -1]) # latenza, utilizzo banda, data rate e plr
     # for k, v in weighted_sum_kpi.items():
     #     print(f"service: {k[0]}, resource: {k[1]}: {v}")
 
@@ -92,16 +92,16 @@ if __name__ == '__main__':
     # for (res_id, serv_id), norm_kvi in normalized_kvi.items():
     #     print(f"Resource {res_id} takes on service {serv_id} with normalized kvis of {norm_kvi}")
     #
-    # V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
-    # Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
-    # V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I)
-    # Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I)
+    V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
+    Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
+    V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I)
+    Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I)
     # #
     # #
-    # pareto_solutions_exact = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.01)
-    #
-    # plot_pareto_front(pareto_solutions_exact)
-    # save_pareto_solutions(pareto_solutions_exact, filename="pareto_solutions.csv")
+    pareto_solutions_exact = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.01)
+
+    plot_pareto_front(pareto_solutions_exact)
+    save_pareto_solutions(pareto_solutions_exact, filename="pareto_solutions.csv")
     #
     # pareto_solutions_filtered = filter_pareto_solutions(pareto_solutions_exact)
     # plot_pareto_front(pareto_solutions_filtered)
