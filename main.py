@@ -9,11 +9,13 @@ import random
 import csv
 
 class Service:
-    def __init__(self, id, demand, min_kpi, min_kvi, kpi_service, kvi_service, weights_kpi, weights_kvi, flops, p_s):
+    def __init__(self, id, demand, min_kpi, min_kvi, kpi_service_req, kvi_service_req, kpi_service, kvi_service, weights_kpi, weights_kvi, flops, p_s):
         self.id = id
         self.demand = demand
         self.min_kpi = min_kpi  # valore minimo globale tollerabile kpi
         self.min_kvi = min_kvi  # valore minimo globale tollerabile kvi
+        self.kpi_service_req = np.array(kpi_service_req) # requested minimum
+        self.kvi_service_req = np.array(kvi_service_req) # requested minimum
         self.kpi_service = np.array(kpi_service)  # 4 KPI, valore desiderato
         self.kvi_service = np.array(kvi_service)  # 3 KVI, valore desiderato
         self.weights_kpi = np.array(weights_kpi)  # per calcolo kpi globale
@@ -48,7 +50,7 @@ if __name__ == '__main__':
     # Questi sono liste di oggetti Resource e Service: per .get() ogni elemento index di una singola istanza, la ind,
     # mi serve services[ind].parametro[index]
 
-    services = [Service(j, demand=random.randint(1, 5), min_kpi=random.uniform(1e-6,1), min_kvi=random.uniform(1e-6,1), kpi_service=[random.uniform(1e-3, 200e-3), random.uniform(0.1, 100), random.randint(1, 50), random.uniform(0.1, 100)],
+    services = [Service(j, demand=random.randint(1, 5), min_kpi=0, min_kvi=0, kpi_service_req=[random.uniform(200e-3, 600e-3), random.uniform(50, 100), random.randint(1, 20), random.uniform(50, 100)], kvi_service_req=[random.randint(1, 20), random.uniform(0.5,1), random.randint(100,1000)], kpi_service=[random.uniform(1e-3, 200e-3), random.uniform(0.1, 100), random.randint(1, 50), random.uniform(0.1, 100)],
                         kvi_service=[random.randint(1, 50), random.uniform(1e-6,1), random.randint(10,600)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=random.uniform(1E3,1E9), p_s=random.randint(1,5)) for j in range(170)]
 
     resources = [Resource(n, availability=random.randint(1, 15), kpi_resource=[random.uniform(1e-3, 200e-3), random.randint(1, 20), random.randint(1, 20), random.randint(1, 20)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)], n_c=random.uniform(1e9, 4e9), P_c=random.randint(10, 50), u_c=random.uniform(0.001,1), n_m=random.randint(2, 6), P_m=random.randint(10, 50), speed=random.uniform(50e9, 150e9), fcp=random.uniform(1e6,1e9), N0=10e-10, lmbd=random.uniform(0.001,1)) for n in range(200)]
