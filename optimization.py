@@ -171,7 +171,10 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_s
 
         save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
                          filename="results_optimization_qi.csv")
-    else:
+    if model.Status == GRB.INFEASIBLE:
+        print("Il modello è infeasible. Analizzo il conflitto...")
+        model.computeIIS()
+        model.write("infeasible_model.ilp")  # Scrive il file con i vincoli responsabili dell'infeasibilità
         Q_I = 0
 
     return Q_I
@@ -238,8 +241,11 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_s
                          filename="results_optimization_vi.csv")
 
         V_I = model.ObjVal
-    else:
-        V_I = 0
+        if model.Status == GRB.INFEASIBLE:
+            print("Il modello è infeasible. Analizzo il conflitto...")
+            model.computeIIS()
+            model.write("infeasible_model.ilp")  # Scrive il file con i vincoli responsabili dell'infeasibilità
+            V_I = 0
 
     return V_I
 
@@ -315,6 +321,12 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
         save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
                          filename="results_optimization_qn.csv")
 
+    if model.Status == GRB.INFEASIBLE:
+        print("Il modello è infeasible. Analizzo il conflitto...")
+        model.computeIIS()
+        model.write("infeasible_model.ilp")  # Scrive il file con i vincoli responsabili dell'infeasibilità
+        Q_N = 0
+
     return Q_N
 
 
@@ -386,7 +398,13 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
 
         V_N = model.ObjVal
 
-    else:
+    if model.Status == GRB.INFEASIBLE:
+        print("Il modello è infeasible. Analizzo il conflitto...")
+
+        model.computeIIS()
+
+        model.write("infeasible_model.ilp")  # Scrive il file con i vincoli responsabili dell'infeasibilità
+
         V_N = 0
 
     return V_N
