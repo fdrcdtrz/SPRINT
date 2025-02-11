@@ -253,6 +253,58 @@ def compute_normalized_kpi(services, resources, signs):
 
     return normalized_kpi, weighted_sum_kpi
 
+def q_v_big_req(services, signs_kpi, signs_kvi):
+    kpi_tot = []
+    kvi_tot = []
+    temp_kpi = np.zeros(4)
+    temp_kvi = np.zeros(3)
+
+    for service in services:
+        kpi_tot.append(service.kpi_service_req)
+        kvi_tot.append(service.kvi_service_req)
+
+    max_kpi_req = np.max(kpi_tot, axis=0)
+    min_kpi_req = np.min(kpi_tot, axis=0)
+    max_kvi_req = np.max(kvi_tot, axis=0)
+    min_kvi_req = np.min(kvi_tot, axis=0)
+
+    for service in services:
+        for index, requested in enumerate(service.kpi_service_req):
+            if signs_kpi[index] == 1:
+                if max_kpi_req[index] > min_kpi_req[index]: # benefit
+                    temp_kpi[index] = (requested - min_kpi_req[index]) / (max_kpi_req[index] - min_kpi_req[index]) # singolo elemento normalizzato
+                else:
+                    temp_kpi[index] = 1
+            else:
+                if max_kpi_req[index] > min_kpi_req[index]: # cost
+                    temp_kpi[index] = (max_kpi_req[index] - requested) / (max_kpi_req[index] - min_kpi_req[index]) # singolo elemento normalizzato
+                else:
+                    temp_kpi[index] = 1
+
+        service.min_kpi = np.dot(service.weights_kpi, temp_kpi)
+        service.min_kpi = np.clip(service.min_kpi, 0, 1)
+
+    for service in services:
+        for index, requested in enumerate(service.kvi_service_req):
+            if signs_kvi[index] == 1:
+                if max_kvi_req[index] > min_kvi_req[index]:  # benefit
+                    temp_kvi[index] = (requested - min_kvi_req[index]) / (
+                                max_kvi_req[index] - min_kvi_req[index])  # singolo elemento normalizzato
+                else:
+                    temp_kvi[index] = 1
+            else:
+                if max_kvi_req[index] > min_kvi_req[index]:  # cost
+                    temp_kvi[index] = (max_kvi_req[index] - requested) / (
+                                max_kvi_req[index] - min_kvi_req[index])  # singolo elemento normalizzato
+                else:
+                    temp_kvi[index] = 1
+
+        service.min_kvi = np.dot(service.weights_kvi, temp_kvi)
+        service.min_kvi = np.clip(service.min_kvi, 0, 1)
+
+
+
+
 
 # esempio per ricordarsi come chiamarle
 # computation_time = compute_computation_time(service, resource) -> una coppia specifica
