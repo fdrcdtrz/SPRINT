@@ -142,7 +142,7 @@ def compute_channel_gain_matrix(services, resources):
     gains = np.zeros((len(services), len(resources)))
     for i, service in enumerate(services):
         for j, resource in enumerate(resources):
-            gains[i, j] = random.uniform(0.1, 1.0) # non so i valori precisi, da cambiare
+            gains[i, j] = random.uniform(0.1, 1.0)
     return gains
 
 

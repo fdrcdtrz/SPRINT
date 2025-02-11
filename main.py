@@ -30,7 +30,7 @@ class Resource:
         self.n_c = n_c
         self.P_c = P_c
         self.u_c = u_c
-        self.n_m = n_m
+        self.n_m = n_m #memory available GBytes
         self.P_m = P_m
         self.speed = speed
         self.fpc = fcp
@@ -42,15 +42,16 @@ if __name__ == '__main__':
 
     # start = timer()
     start =  time.time()
+    #random.seed(30)
 
     # inizializzo J servizi e N risorse.
     # Questi sono liste di oggetti Resource e Service: per .get() ogni elemento index di una singola istanza, la ind,
     # mi serve services[ind].parametro[index]
 
-    services = [Service(j, demand=random.randint(1, 5), min_kpi=random.uniform(1e-6,1), min_kvi=random.uniform(1e-6,1), kpi_service=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)],
-                        kvi_service=[random.randint(10, 50), random.randint(1, 5), random.uniform(1e-6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=2000, p_s=50) for j in range(150)]
+    services = [Service(j, demand=random.randint(1, 5), min_kpi=random.uniform(1e-6,1), min_kvi=random.uniform(1e-6,1), kpi_service=[random.uniform(1e-3, 200e-3), random.uniform(0.1, 100), random.randint(1, 50), random.uniform(0.1, 100)],
+                        kvi_service=[random.randint(1, 50), random.uniform(1e-6,1), random.randint(10,600)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=random.uniform(1E3,1E9), p_s=random.randint(1,5)) for j in range(170)]
 
-    resources = [Resource(n, availability=random.randint(10, 50), kpi_resource=[random.randint(1, 20), random.randint(1, 20), random.randint(1, 20), random.randint(1, 20)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)], n_c=random.randint(1, 10), P_c=random.randint(10, 50), u_c=random.randint(1, 10), n_m=random.randint(1, 10), P_m=random.randint(10, 50), speed=random.randint(100, 500), fcp=random.uniform(1e6,1e9), N0=random.randint(10, 40), lmbd=random.uniform(0.001,1)) for n in range(200)]
+    resources = [Resource(n, availability=random.randint(1, 15), kpi_resource=[random.uniform(1e-3, 200e-3), random.randint(1, 20), random.randint(1, 20), random.randint(1, 20)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)], n_c=random.uniform(1e9, 4e9), P_c=random.randint(10, 50), u_c=random.uniform(0.001,1), n_m=random.randint(2, 6), P_m=random.randint(10, 50), speed=random.uniform(50e9, 150e9), fcp=random.uniform(1e6,1e9), N0=10e-10, lmbd=random.uniform(0.001,1)) for n in range(200)]
 
     # test: da cambiare ogni normalized_kpi con weighted_sum_kpi e stessa cosa per kvi
 
@@ -60,11 +61,11 @@ if __name__ == '__main__':
             #print(computation_time)
 
     # TIS
-    normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1, -1])
+    normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1, -1]) # trustworthiness inclusiveness sustainability
     # for k, v in weighted_sum_kvi.items():
     #     print(f"service: {k[0]}, resource: {k[1]}: {v}")
 
-    normalized_kpi, weighted_sum_kpi = compute_normalized_kpi(services, resources, signs=[1, -1, 1, -1])
+    normalized_kpi, weighted_sum_kpi = compute_normalized_kpi(services, resources, signs=[-1, -1, 1, -1]) # latenza, utilizzo banda, data rate e plr
     # for k, v in weighted_sum_kpi.items():
     #     print(f"service: {k[0]}, resource: {k[1]}: {v}")
 
