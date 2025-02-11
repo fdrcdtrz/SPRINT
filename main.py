@@ -1,10 +1,12 @@
+from benchmark import *
 from optimization import *
 from initialization import *
-from benchmark import *
 from timeit import default_timer as timer
+import time, sys, datetime
+from datetime import date
 import numpy as np
 import random
-
+import csv
 
 class Service:
     def __init__(self, id, demand, min_kpi, min_kvi, kpi_service, kvi_service, weights_kpi, weights_kvi, flops, p_s):
@@ -35,22 +37,20 @@ class Resource:
         self.N0 = N0
         self.lmbd = lmbd
 
-    # da aggiunere i parametri per il calcolo di KVI (n_c, P_c, u_c, n_m, P_m, speed, fpc, N0, lambda)
-
-# da aggiungere da qualche parte la definizione di questi due parametri: g_sj^{r_n}, g_sj^{r_n, e}, guadagno canale che dipende da servizi e risorse
-
 
 if __name__ == '__main__':
 
-    start = timer()
+    # start = timer()
+    start =  time.time()
+
     # inizializzo J servizi e N risorse.
     # Questi sono liste di oggetti Resource e Service: per .get() ogni elemento index di una singola istanza, la ind,
     # mi serve services[ind].parametro[index]
 
-    services = [Service(j, demand=random.randint(1, 5), min_kpi=0.001, min_kvi=0.001, kpi_service=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)],
-                        kvi_service=[random.randint(10, 50), random.randint(1, 5), random.uniform(1e-6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=2000, p_s=50) for j in range(10)]
+    services = [Service(j, demand=random.randint(1, 5), min_kpi=random.uniform(1e-6,1), min_kvi=random.uniform(1e-6,1), kpi_service=[random.randint(1, 5), random.randint(1, 5), random.randint(1, 5), random.randint(1, 5)],
+                        kvi_service=[random.randint(10, 50), random.randint(1, 5), random.uniform(1e-6,1)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=2000, p_s=50) for j in range(150)]
 
-    resources = [Resource(n, availability=random.randint(10, 50), kpi_resource=[random.randint(1, 20), random.randint(1, 20), random.randint(1, 20), random.randint(1, 20)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)], n_c=20, P_c=50, u_c=20, n_m=20, P_m=50, speed=500, fcp=20000, N0=40, lmbd=0.4) for n in range(20)]
+    resources = [Resource(n, availability=random.randint(10, 50), kpi_resource=[random.randint(1, 20), random.randint(1, 20), random.randint(1, 20), random.randint(1, 20)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)], n_c=random.randint(1, 10), P_c=random.randint(10, 50), u_c=random.randint(1, 10), n_m=random.randint(1, 10), P_m=random.randint(10, 50), speed=random.randint(100, 500), fcp=random.uniform(1e6,1e9), N0=random.randint(10, 40), lmbd=random.uniform(0.001,1)) for n in range(200)]
 
     # test: da cambiare ogni normalized_kpi con weighted_sum_kpi e stessa cosa per kvi
 
@@ -84,13 +84,13 @@ if __name__ == '__main__':
     #
     # for (res_id, serv_id), norm_kvi in normalized_kvi.items():
     #     print(f"Resource {res_id} takes on service {serv_id} with normalized kvis of {norm_kvi}")
-
+    #
     V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
     Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi)
     V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I)
     Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I)
-
-
+    #
+    #
     pareto_solutions_exact = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.01)
 
     plot_pareto_front(pareto_solutions_exact)
@@ -118,25 +118,28 @@ if __name__ == '__main__':
     #print(pareto_solutions)
 
 
-    assignment_greedy_kpi = greedy_assignment_kpi(services, resources, weighted_sum_kpi)
-    assignment_greedy_kvi = greedy_assignment_kvi(services, resources, weighted_sum_kvi)
-    assignment_sa_kpi = simulated_annealing(services, resources, weighted_sum_kpi, weighted_sum_kvi, obj="KPI")
-    assignment_sa_kvi = simulated_annealing(services, resources, weighted_sum_kpi, weighted_sum_kvi, obj="KVI")
-    assignment_random = random_assignment(services, resources)
+    # assignment_greedy_kpi = greedy_assignment_kpi(services, resources, weighted_sum_kpi)
+    # assignment_greedy_kvi = greedy_assignment_kvi(services, resources, weighted_sum_kvi)
+    # assignment_sa_kpi = simulated_annealing(services, resources, weighted_sum_kpi, weighted_sum_kvi, obj="KPI")
+    # assignment_sa_kvi = simulated_annealing(services, resources, weighted_sum_kpi, weighted_sum_kvi, obj="KVI")
+    # assignment_random = random_assignment(services, resources)
+    #
+    # # Salva i risultati in file CSV
+    # save_assignment_results(assignment_greedy_kpi, services, resources, weighted_sum_kpi, weighted_sum_kvi,
+    #                         normalized_kpi, normalized_kvi, "greedy_kpi.csv")
+    # save_assignment_results(assignment_greedy_kvi, services, resources, weighted_sum_kpi, weighted_sum_kvi,
+    #                         normalized_kpi, normalized_kvi, "greedy_kvi.csv")
+    # save_assignment_results(assignment_sa_kpi, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
+    #                         normalized_kvi, "sa_kpi.csv")
+    # save_assignment_results(assignment_sa_kvi, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
+    #                         normalized_kvi, "sa_kvi.csv")
+    # save_assignment_results(assignment_random, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
+    #                         normalized_kvi, "random.csv")
 
-    # Salva i risultati in file CSV
-    save_assignment_results(assignment_greedy_kpi, services, resources, weighted_sum_kpi, weighted_sum_kvi,
-                            normalized_kpi, normalized_kvi, "greedy_kpi.csv")
-    save_assignment_results(assignment_greedy_kvi, services, resources, weighted_sum_kpi, weighted_sum_kvi,
-                            normalized_kpi, normalized_kvi, "greedy_kvi.csv")
-    save_assignment_results(assignment_sa_kpi, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
-                            normalized_kvi, "sa_kpi.csv")
-    save_assignment_results(assignment_sa_kvi, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
-                            normalized_kvi, "sa_kvi.csv")
-    save_assignment_results(assignment_random, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
-                            normalized_kvi, "random.csv")
+    # end = timer()
+    end =  time.time()
+    time_elapsed = end - start
 
-    end = timer()
-    print('Time elapsed: ', end - start)
+    print(f"Time elapsed: {time_elapsed}")
     with open("execution_time.txt", "a") as file:
-        file.write(f"Servizi: {len(services)}, Risorse: {len(resources)}, Tempo: {end-start:.6f} sec\n")
+        file.write(f"Servizi: {len(services)}, Risorse: {len(resources)}, Tempo: {time_elapsed:.6f} sec\n")

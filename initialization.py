@@ -1,6 +1,7 @@
 from main import *
 import numpy as np
 import random
+import csv
 
 
 # funzioni per la normalizzazione attributi KPI e indicatori KVI e rispettivi Q e V
@@ -153,9 +154,9 @@ def compute_eavesdropper_gain(services, resources):
     return gains_eavesdropper
 
 
-# funzione calcolo computation time
+# funzione calcolo computation time in h
 def compute_computation_time(service, resource):
-    return service.flops / (resource.n_c * resource.speed * resource.fpc)
+    return service.flops / (resource.n_c * resource.speed * resource.fpc * 3600)
 
 
 # funzione calcolo KVI sostenibilità ambientale

@@ -4,6 +4,7 @@ from initialization import *
 import pandas as pd
 import matplotlib.pyplot as plt
 import random
+import csv
 
 
 # script per definizione funzione di salvataggio risultati, problema di ottimizzazione per calcolo di Q^I, V^I, Q^N, V^N
@@ -38,6 +39,8 @@ def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, wei
         "KPI_Resource", "KVI_Resource",
         "Global_KPI", "Global_KVI"
     ])
+
+    df = df[df['Assigned'] != 0]
 
     df.to_csv(filename, index=False)
     print(f"\nSaved in {filename}")
@@ -76,6 +79,8 @@ def save_epsilon_constraint(services, resources, x, normalized_kpi, normalized_k
         "KPI_Service", "KVI_Service",
         "KPI_Resource", "KVI_Resource"
     ])
+
+    df = df[df['Assigned'] != 0]
 
     df.to_csv(filename, index=False)
     print(f"\nSaved in {filename}")
@@ -152,19 +157,22 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_s
     model.optimize()
 
     # Risultati
-    print("\nSoluzione Ottima:")
-    for s in services:
-        for r in resources:
-            if round(x[s.id, r.id].x) == 1:
-                print(f"Servizio {s.id} assegnato a risorsa {r.id}")
+    if model.status == GRB.OPTIMAL:
+        print("\nSoluzione Ottima:")
+        for s in services:
+            for r in resources:
+                if round(x[s.id, r.id].x) == 1:
+                    print(f"Servizio {s.id} assegnato a risorsa {r.id}")
 
-    # Valore ottimo dell'obiettivo
-    print(f"\nValore ottimale di KPI: {model.ObjVal}")
+        # Valore ottimo dell'obiettivo
+        print(f"\nValore ottimale di KPI: {model.ObjVal}")
 
-    Q_I = model.ObjVal
+        Q_I = model.ObjVal
 
-    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                     filename="results_optimization_qi.csv")
+        save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
+                         filename="results_optimization_qi.csv")
+    else:
+        Q_I = 0
 
     return Q_I
 
@@ -216,19 +224,22 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_s
     model.optimize()
 
     # Risultati
-    print("\nSoluzione Ottima:")
-    for s in services:
-        for r in resources:
-            if round(x[s.id, r.id].x) == 1:
-                print(f"Servizio {s.id} assegnato a risorsa {r.id}")
+    if model.status == GRB.OPTIMAL:
+        print("\nSoluzione Ottima:")
+        for s in services:
+            for r in resources:
+                if round(x[s.id, r.id].x) == 1:
+                    print(f"Servizio {s.id} assegnato a risorsa {r.id}")
 
-    # Valore ottimo dell'obiettivo
-    print(f"\nValore ottimale di KVI: {model.ObjVal}")
+        # Valore ottimo dell'obiettivo
+        print(f"\nValore ottimale di KVI: {model.ObjVal}")
 
-    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                     filename="results_optimization_vi.csv")
+        save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
+                         filename="results_optimization_vi.csv")
 
-    V_I = model.ObjVal
+        V_I = model.ObjVal
+    else:
+        V_I = 0
 
     return V_I
 
@@ -288,20 +299,21 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
     print(f"DEBUG: Q_N calcolato = {model.ObjVal}")
 
     # Risultati
-    print("\nSoluzione Ottima:")
+    if model.status == GRB.OPTIMAL:
+        print("\nSoluzione Ottima:")
 
-    for s in services:
-        for r in resources:
-            if round(x[s.id, r.id].x) == 1:
-                print(f"Servizio {s.id} assegnato a risorsa {r.id}")
+        for s in services:
+            for r in resources:
+                if round(x[s.id, r.id].x) == 1:
+                    print(f"Servizio {s.id} assegnato a risorsa {r.id}")
 
-    # Valore ottimo dell'obiettivo
-    print(f"\nValore ottimale di KPI: {model.ObjVal}")
+        # Valore ottimo dell'obiettivo
+        print(f"\nValore ottimale di KPI: {model.ObjVal}")
 
-    Q_N = model.ObjVal
+        Q_N = model.ObjVal
 
-    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                     filename="results_optimization_qn.csv")
+        save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
+                         filename="results_optimization_qn.csv")
 
     return Q_N
 
@@ -359,19 +371,23 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
     model.optimize()
 
     # Risultati
-    print("\nSoluzione Ottima:")
-    for s in services:
-        for r in resources:
-            if round(x[s.id, r.id].x) == 1:
-                print(f"Servizio {s.id} assegnato a risorsa {r.id}")
+    if model.status == GRB.OPTIMAL:
+        print("\nSoluzione Ottima:")
+        for s in services:
+            for r in resources:
+                if round(x[s.id, r.id].x) == 1:
+                    print(f"Servizio {s.id} assegnato a risorsa {r.id}")
 
-    # Valore ottimo dell'obiettivo
-    print(f"\nValore ottimale di KVI: {model.ObjVal}")
+        # Valore ottimo dell'obiettivo
+        print(f"\nValore ottimale di KVI: {model.ObjVal}")
 
-    save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                     filename="results_optimization_vn.csv")
+        save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
+                         filename="results_optimization_vn.csv")
 
-    V_N = model.ObjVal
+        V_N = model.ObjVal
+
+    else:
+        V_N = 0
 
     return V_N
 
