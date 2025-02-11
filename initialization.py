@@ -122,7 +122,7 @@ def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, sig
     # idea è normalizzarli in riferimento a quelli offerti dalla risorsa index_res-esima
 
     for index, attribute in enumerate(kvi_service):
-        for requested in kvi_service_req[index]:
+        for requested in kvi_service_req:
             exposed_kvi = resources[index_res].kvi_resource[index] # questo deve essere il vettore offerto dalla risorsa
             # index_res-esima
             max_val = maximum[index] # questo deve essere il valore
@@ -130,6 +130,9 @@ def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, sig
 
             if exposed_kvi == attribute:
                 row[index] = 1 # cioè è esattamente quanto chiesto
+
+            if max_val == requested:
+                row[index] = 1  # Se il valore massimo è uguale al valore richiesto, normalizza a 1
             else:
                 row[index] = 1 - (max_val - attribute) / (max_val - requested) if signs[index] == 1 else \
                     1 - (attribute - max_val) / (requested - max_val)
@@ -216,7 +219,7 @@ def normalize_single_row_kpi(kpi_service, kpi_service_req, resources, index_res,
     # idea è normalizzarli in riferimento a quelli offerti dalla risorsa index_res-esima
 
     for index, attribute in enumerate(kpi_service):
-        for requested in kpi_service_req[index]:
+        for requested in kpi_service_req:
             exposed_kpi = resources[index_res].kpi_resource[index] # questo deve essere il vettore offerto dalla risorsa
             # index_res-esima
             max_val = maximum[index] # questo deve essere il valore
@@ -224,6 +227,8 @@ def normalize_single_row_kpi(kpi_service, kpi_service_req, resources, index_res,
 
             if exposed_kpi == attribute:
                 row[index] = 1 # cioè è esattamente quanto chiesto
+            if max_val == requested:
+                row[index] = 1  # Se il valore massimo è uguale al valore richiesto, normalizza a 1
             else:
                 row[index] = 1 - (max_val - attribute) / (max_val - requested) if signs[index] == 1 else \
                     1 - (attribute - max_val) / (requested - max_val)
