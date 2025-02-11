@@ -115,24 +115,25 @@ import csv
 # return normalized_kvi, weighted_sum_kvi
 
 
-def normalize_single_row(kvi_service, resources, index_res, signs, kvi_values):
+def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, signs, kvi_values):
     # kvis_service sono i tre kvi del servizio i-esimo richiesti, cioè le soglie output di LLM
     row = np.zeros(len(kvi_service))  # creo riga per i tre kvi del servizio i-esimo offerti da risorsa index_res-esima
     maximum = np.max(kvi_values, axis=0)
     # idea è normalizzarli in riferimento a quelli offerti dalla risorsa index_res-esima
 
     for index, attribute in enumerate(kvi_service):
-        exposed_kvi = resources[index_res].kvi_resource[index] # questo deve essere il vettore offerto dalla risorsa
-        # index_res-esima
-        max_val = maximum[index] # questo deve essere il valore
-        # massimo per quell'attributo valutato su tutte le risorse per quel servizio
+        for requested in kvi_service_req[index]:
+            exposed_kvi = resources[index_res].kvi_resource[index] # questo deve essere il vettore offerto dalla risorsa
+            # index_res-esima
+            max_val = maximum[index] # questo deve essere il valore
+            # massimo per quell'attributo valutato su tutte le risorse per quel servizio
 
-        if max_val == attribute:
-            row[index] = 1 # cioè è esattamente quanto chiesto
-        else:
-            row[index] = 1 - (max_val - exposed_kvi) / (max_val - attribute) if signs[index] == 1 else \
-                1 - (exposed_kvi - max_val) / (max_val - attribute)
-        #row = np.clip(row, 0, 1)  # Forza tutti i valori tra 0 e 1
+            if exposed_kvi == attribute:
+                row[index] = 1 # cioè è esattamente quanto chiesto
+            else:
+                row[index] = 1 - (max_val - attribute) / (max_val - requested) if signs[index] == 1 else \
+                    1 - (attribute - max_val) / (requested - max_val)
+            row = np.clip(row, 0, 1)  # Forza tutti i valori tra 0 e 1
 
     return np.abs(row)
 
@@ -199,7 +200,7 @@ def compute_normalized_kvi(services, resources, CI, signs):
 
         # Normalizzazione
         for n, resource in enumerate(resources):
-            norm_kvi = normalize_single_row(service.kvi_service, resources, n, signs, kvi_values)
+            norm_kvi = normalize_single_row(service.kvi_service, service.kvi_service_req, resources, n, signs, kvi_values)
             normalized_kvi[(resource.id, service.id)] = norm_kvi
 
             # Somma pesata con i pesi del servizio
@@ -208,24 +209,25 @@ def compute_normalized_kvi(services, resources, CI, signs):
 
     return normalized_kvi, weighted_sum_kvi
 
-def normalize_single_row_kpi(kpi_service, resources, index_res, signs, kpi_values):
+def normalize_single_row_kpi(kpi_service, kpi_service_req, resources, index_res, signs, kpi_values):
     # kvis_service sono i tre kvi del servizio i-esimo richiesti, cioè le soglie output di LLM
     row = np.zeros(len(kpi_service))  # creo riga per i tre kvi del servizio i-esimo offerti da risorsa index_res-esima
     maximum = np.max(kpi_values, axis=0)
     # idea è normalizzarli in riferimento a quelli offerti dalla risorsa index_res-esima
 
     for index, attribute in enumerate(kpi_service):
-        exposed_kpi = resources[index_res].kpi_resource[index] # questo deve essere il vettore offerto dalla risorsa
-        # index_res-esima
-        max_val = maximum[index] # questo deve essere il valore
-        # massimo per quell'attributo valutato su tutte le risorse per quel servizio
+        for requested in kpi_service_req[index]:
+            exposed_kpi = resources[index_res].kpi_resource[index] # questo deve essere il vettore offerto dalla risorsa
+            # index_res-esima
+            max_val = maximum[index] # questo deve essere il valore
+            # massimo per quell'attributo valutato su tutte le risorse per quel servizio
 
-        if max_val == attribute:
-            row[index] = 1 # cioè è esattamente quanto chiesto
-        else:
-            row[index] = 1 - (max_val - exposed_kpi) / (max_val - attribute) if signs[index] == 1 else \
-                1 - (exposed_kpi - max_val) / (max_val - attribute)
-        row = np.clip(row, 0, 1)  # Forza tutti i valori tra 0 e 1
+            if exposed_kpi == attribute:
+                row[index] = 1 # cioè è esattamente quanto chiesto
+            else:
+                row[index] = 1 - (max_val - attribute) / (max_val - requested) if signs[index] == 1 else \
+                    1 - (attribute - max_val) / (requested - max_val)
+            row = np.clip(row, 0, 1)  # Forza tutti i valori tra 0 e 1
     return np.abs(row)
 
 def compute_normalized_kpi(services, resources, signs):
@@ -242,7 +244,7 @@ def compute_normalized_kpi(services, resources, signs):
             kpi_values.append(resource.kpi_resource)
         # Normalizzazione
         for n, resource in enumerate(resources):
-            norm_kpi = normalize_single_row_kpi(service.kpi_service, resources, n, signs, kpi_values)
+            norm_kpi = normalize_single_row_kpi(service.kpi_service, service.kpi_service_req, resources, n, signs, kpi_values)
             normalized_kpi[(resource.id, service.id)] = norm_kpi
 
             # Somma pesata con i pesi del servizio
