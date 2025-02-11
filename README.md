@@ -1,5 +1,5 @@
 
-# Ottimizzazione Multi-Obiettivo con Metodo Epsilon-Constraint esatto e Cut-and-Solve
+# Ottimizzazione Multi-Obiettivo con Metodo Epsilon-Constraint esatto
 
 Questo progetto implementa una soluzione di ottimizzazione per l'assegnazione di servizi a risorse in un sistema con due obiettivi, KPI e KVI. Il modello utilizza i metodi **Epsilon-Constraint** esatto per trovare la soluzione ottima sotto vincoli multi-obiettivo. 
 
