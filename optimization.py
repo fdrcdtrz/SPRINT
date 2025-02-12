@@ -5,51 +5,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import random
 import csv
+import os
 
 
 # script per definizione funzione di salvataggio risultati, problema di ottimizzazione per calcolo di Q^I, V^I, Q^N, V^N
 def save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                     filename="results.csv"):
-    results = []
+                     results_dir, filename):
 
-    for s in services:
-        for r in resources:
-            assigned = round(x[s.id, r.id].x)  # 1 se assegnato, 0 altrimenti
-            list_s_kpi_service = [float(kpi) for kpi in s.kpi_service]
-            list_s_kvi_service = [float(kvi) for kvi in s.kvi_service]
-            list_r_kpi_resource = [float(kpi) for kpi in r.kpi_resource]
-            list_r_kvi_resource = [float(kvi) for kvi in r.kvi_resource]
-
-            results.append([
-                s.id, r.id, assigned,
-                normalized_kpi.get((r.id, s.id), 0),
-                normalized_kvi.get((r.id, s.id), 0),  # chiave più nulla se non esiste, ovvero zero
-                weighted_sum_kpi.get((r.id, s.id), 0),
-                weighted_sum_kvi.get((r.id, s.id), 0),
-                s.min_kpi, s.min_kvi,
-                list_s_kpi_service, list_s_kvi_service,
-                list_r_kpi_resource, list_r_kvi_resource
-            ])
-
-    df = pd.DataFrame(results, columns=[
-        "Service_ID", "Resource_ID", "Assigned",
-        "Normalized_KPI", "Normalized_KVI",
-        "Min_KPI", "Min_KVI",
-        "KPI_Service", "KVI_Service",
-        "KPI_Resource", "KVI_Resource",
-        "Global_KPI", "Global_KVI"
-    ])
-
-    df = df[df['Assigned'] != 0]
-
-    df.to_csv(filename, index=False)
-    print(f"\nSaved in {filename}")
-
-
-def save_epsilon_constraint(services, resources, x, normalized_kpi, normalized_kvi,
-                            weighted_sum_kpi, weighted_sum_kvi, epsilon):
-    filename = f"epsilon_{epsilon:.6f}.csv"
-
+    filepath = os.path.join(results_dir, filename)  # Percorso corretto
     results = []
 
     for s in services:
@@ -74,17 +37,57 @@ def save_epsilon_constraint(services, resources, x, normalized_kpi, normalized_k
     df = pd.DataFrame(results, columns=[
         "Service_ID", "Resource_ID", "Assigned",
         "Normalized_KPI", "Normalized_KVI",
-        "Weighted_Sum_KPI", "Weighted_Sum_KVI",  # Fix colonna mancata
+        "Weighted_Sum_KPI", "Weighted_Sum_KVI",
         "Min_KPI", "Min_KVI",
         "KPI_Service", "KVI_Service",
         "KPI_Resource", "KVI_Resource"
     ])
 
-    df = df[df['Assigned'] != 0]
+    df = df[df['Assigned'] != 0]  # Mantiene solo le assegnazioni valide
+    df.to_csv(filepath, index=False)
 
-    df.to_csv(filename, index=False)
-    print(f"\nSaved in {filename}")
-    return
+    print(f"Salvato: {filepath}")
+
+
+def save_epsilon_constraint(services, resources, x, normalized_kpi, normalized_kvi,
+                            weighted_sum_kpi, weighted_sum_kvi, results_dir, epsilon):
+
+    filename = f"epsilon_{epsilon:.6f}.csv"
+    filepath = os.path.join(results_dir, filename)  # Percorso corretto
+    results = []
+
+    for s in services:
+        for r in resources:
+            assigned = round(x[s.id, r.id].x)  # 1 se assegnato, 0 altrimenti
+            list_s_kpi_service = [float(kpi) for kpi in s.kpi_service]
+            list_s_kvi_service = [float(kvi) for kvi in s.kvi_service]
+            list_r_kpi_resource = [float(kpi) for kpi in r.kpi_resource]
+            list_r_kvi_resource = [float(kvi) for kvi in r.kvi_resource]
+
+            results.append([
+                s.id, r.id, assigned,
+                normalized_kpi.get((r.id, s.id), 0),
+                normalized_kvi.get((r.id, s.id), 0),
+                weighted_sum_kpi.get((r.id, s.id), 0),
+                weighted_sum_kvi.get((r.id, s.id), 0),
+                s.min_kpi, s.min_kvi,
+                list_s_kpi_service, list_s_kvi_service,
+                list_r_kpi_resource, list_r_kvi_resource
+            ])
+
+    df = pd.DataFrame(results, columns=[
+        "Service_ID", "Resource_ID", "Assigned",
+        "Normalized_KPI", "Normalized_KVI",
+        "Weighted_Sum_KPI", "Weighted_Sum_KVI",
+        "Min_KPI", "Min_KVI",
+        "KPI_Service", "KVI_Service",
+        "KPI_Resource", "KVI_Resource"
+    ])
+
+    df = df[df['Assigned'] != 0]  # Mantiene solo le assegnazioni valide
+    df.to_csv(filepath, index=False)
+
+    print(f"Salvato: {filepath}")
 
 
 def save_pareto_solutions(pareto_solutions, filename="pareto_solutions.csv"):
@@ -110,7 +113,7 @@ def plot_pareto_front(pareto_solutions):
     plt.show()
 
 
-def optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi):
+def optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, results_dir):
     # Creazione del modello
     model = Model("Maximize_KPI")
 
@@ -170,7 +173,7 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_s
         Q_I = model.ObjVal
 
         save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                         filename="results_optimization_qi.csv")
+                         results_dir, filename="results_optimization_qi.csv")
     if model.Status == GRB.INFEASIBLE:
         print("Il modello è infeasible. Analizzo il conflitto...")
         model.computeIIS()
@@ -180,7 +183,7 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_s
     return Q_I
 
 
-def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi):
+def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, results_dir):
     # Creazione del modello
     model = Model("Maximize_KVI")
 
@@ -246,7 +249,7 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_s
         print(f"\nValore ottimale di KVI: {model.ObjVal}")
 
         save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                         filename="results_optimization_vi.csv")
+                         results_dir, filename="results_optimization_vi.csv")
 
         V_I = model.ObjVal
     if model.Status == GRB.INFEASIBLE:
@@ -258,7 +261,7 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_s
     return V_I
 
 
-def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I):
+def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I, results_dir):
     # Creazione del modello
     model = Model("Maximize_KPI_constraining_V")
 
@@ -327,7 +330,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
         Q_N = model.ObjVal
 
         save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                         filename="results_optimization_qn.csv")
+                         results_dir, filename="results_optimization_qn.csv")
 
     if model.Status == GRB.INFEASIBLE:
         print("Il modello è infeasible.")
@@ -338,7 +341,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
     return Q_N
 
 
-def v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I):
+def v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I, results_dir):
     # Creazione del modello
     model = Model("Maximize_KVI_constraining_Q")
 
@@ -402,7 +405,7 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
         print(f"\nValore ottimale di KVI: {model.ObjVal}")
 
         save_results_csv(services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                         filename="results_optimization_vn.csv")
+                         results_dir, filename="results_optimization_vn.csv")
 
         V_N = model.ObjVal
 
@@ -1143,7 +1146,7 @@ def branch_and_bound_pareto(services, resources, normalized_kpi, normalized_kvi,
 #     return pareto_solutions
 
 def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-                             Q_N, Q_I, delta=0.01):
+                             Q_N, Q_I, delta, results_dir):
     pareto_solutions = []
     epsilon = Q_N - delta  # Valore iniziale di epsilon
 
@@ -1208,7 +1211,7 @@ def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi
             print(f"Epsilon: {epsilon}, KPI: {kpi_value}, KVI: {kvi_value}")
 
             save_epsilon_constraint(services, resources, x, normalized_kpi, normalized_kvi,
-                                    weighted_sum_kpi, weighted_sum_kvi, epsilon)
+                                    weighted_sum_kpi, weighted_sum_kvi, results_dir, epsilon)
 
         # Incrementa epsilon
         epsilon += delta
