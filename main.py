@@ -50,10 +50,10 @@ if __name__ == '__main__':
     # Questi sono liste di oggetti Resource e Service: per .get() ogni elemento index di una singola istanza, la ind,
     # mi serve services[ind].parametro[index]
 
-    services = [Service(j, demand=random.randint(1, 5), min_kpi=0, min_kvi=0, kpi_service_req=[random.uniform(200e-3, 400e-3), random.uniform(30, 100), random.randint(1, 20), random.uniform(50, 100)], kvi_service_req=[random.randint(1, 20), random.uniform(0.5,1), random.randint(100,1000)], kpi_service=[random.uniform(1e-3, 200e-3), random.uniform(0.1, 100), random.randint(1, 50), random.uniform(0.1, 100)],
-                        kvi_service=[random.randint(1, 50), random.uniform(1e-6,1), random.randint(10,600)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=random.uniform(1E3,1E9), p_s=random.randint(1,5)) for j in range(100)]
+    services = [Service(j, demand=random.randint(1, 3), min_kpi=0, min_kvi=0, kpi_service_req=[random.uniform(200e-3, 600e-3), random.uniform(1e-6, 10), random.randint(1, 10), random.uniform(80, 100)], kvi_service_req=[random.randint(1, 5), random.uniform(0.8,1), random.randint(400,1000)], kpi_service=[random.uniform(100e-3, 200e-3), random.uniform(0.1, 100), random.randint(1, 50), random.uniform(0.1, 100)],
+                        kvi_service=[random.randint(1, 30), random.uniform(1e-6,1), random.randint(200,400)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=random.uniform(1E3,1E6), p_s=random.randint(1,5)) for j in range(20)]
 
-    resources = [Resource(n, availability=random.randint(5, 15), kpi_resource=[random.uniform(1e-3, 400e-3), random.randint(1, 100), random.randint(10, 50), random.randint(1, 100)], kvi_resource=[random.randint(1, 5), random.randint(1, 5), random.uniform(1e-6,1)], n_c=random.uniform(1e9, 4e9), P_c=random.randint(10, 50), u_c=random.uniform(0.001,1), n_m=random.randint(2, 6), P_m=random.randint(10, 50), speed=random.uniform(50e9, 150e9), fcp=random.uniform(1e6,1e9), N0=10e-10, lmbd=random.uniform(0.001,1)) for n in range(200)]
+    resources = [Resource(n, availability=random.randint(25, 85), kpi_resource=[random.uniform(10e-3, 300e-3), random.randint(5, 50), random.randint(40, 200), random.randint(1, 20)], kvi_resource=[0,0,0], n_c=random.uniform(1, 4), P_c=random.randint(10, 50), u_c=random.uniform(0.001,1), n_m=random.randint(2e3, 6e3), P_m=random.randint(10, 50), speed=random.uniform(50e9, 150e9), fcp=random.uniform(1e6,1e9), N0=10e-10, lmbd=random.uniform(0.001,1)) for n in range(40)]
 
     # test: da cambiare ogni normalized_kpi con weighted_sum_kpi e stessa cosa per kvi
 
@@ -124,27 +124,20 @@ if __name__ == '__main__':
 
     #print(pareto_solutions)
 
-
-    # assignment_greedy_kpi = greedy_assignment_kpi(services, resources, weighted_sum_kpi)
-    # assignment_greedy_kvi = greedy_assignment_kvi(services, resources, weighted_sum_kvi)
-    # assignment_sa_kpi = simulated_annealing(services, resources, weighted_sum_kpi, weighted_sum_kvi, obj="KPI")
-    # assignment_sa_kvi = simulated_annealing(services, resources, weighted_sum_kpi, weighted_sum_kvi, obj="KVI")
-    # assignment_random = random_assignment(services, resources)
+    # assignment, total_kpi, total_kvi = greedy_assignment_kpi(services, resources, weighted_sum_kpi)
+    # save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
+    #                         normalized_kpi, normalized_kvi, total_kpi, total_kvi, "greedy_kpi_results.csv")
     #
-    # # Salva i risultati in file CSV
-    # save_assignment_results(assignment_greedy_kpi, services, resources, weighted_sum_kpi, weighted_sum_kvi,
-    #                         normalized_kpi, normalized_kvi, "greedy_kpi.csv")
-    # save_assignment_results(assignment_greedy_kvi, services, resources, weighted_sum_kpi, weighted_sum_kvi,
-    #                         normalized_kpi, normalized_kvi, "greedy_kvi.csv")
-    # save_assignment_results(assignment_sa_kpi, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
-    #                         normalized_kvi, "sa_kpi.csv")
-    # save_assignment_results(assignment_sa_kvi, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
-    #                         normalized_kvi, "sa_kvi.csv")
-    # save_assignment_results(assignment_random, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
-    #                         normalized_kvi, "random.csv")
+    # assignment, total_kpi, total_kvi = greedy_assignment_kvi(services, resources, weighted_sum_kvi)
+    # save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
+    #                         normalized_kpi, normalized_kvi, total_kpi, total_kvi, "greedy_kvi_results.csv")
+    #
+    # assignment, total_kpi, total_kvi = random_assignment(services, resources, weighted_sum_kpi, weighted_sum_kvi)
+    # save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
+    #                         normalized_kpi, normalized_kvi, total_kpi, total_kvi, "random_results.csv")
 
     # end = timer()
-    end =  time.time()
+    end = time.time()
     time_elapsed = end - start
 
     print(f"Time elapsed: {time_elapsed}")

@@ -194,16 +194,24 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_s
     # Vincolo 1: KPI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
     for s in services:
         for r in resources:
+            # model.addConstr(
+            #     (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+            #     f"kpi_threshold_{s.id}_{r.id}"
+            # )
             model.addConstr(
-                (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
+                weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id] >= s.min_kpi * x[s.id, r.id],
                 f"kpi_threshold_{s.id}_{r.id}"
             )
 
     # Vincolo 2: KVI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
     for s in services:
         for r in resources:
+            # model.addConstr(
+            #     (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+            #     f"kvi_threshold_{s.id}_{r.id}"
+            # )
             model.addConstr(
-                (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
+                weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id] >= s.min_kvi * x[s.id, r.id],
                 f"kvi_threshold_{s.id}_{r.id}"
             )
 
@@ -241,11 +249,11 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_s
                          filename="results_optimization_vi.csv")
 
         V_I = model.ObjVal
-        if model.Status == GRB.INFEASIBLE:
-            print("Il modello è infeasible. Analizzo il conflitto...")
-            model.computeIIS()
-            model.write("infeasible_model.ilp")  # Scrive il file con i vincoli responsabili dell'infeasibilità
-            V_I = 0
+    if model.Status == GRB.INFEASIBLE:
+        print("Il modello è infeasible. Analizzo il conflitto...")
+        model.computeIIS()
+        model.write("infeasible_model.ilp")  # Scrive il file con i vincoli responsabili dell'infeasibilità
+        V_I = 0
 
     return V_I
 
@@ -322,7 +330,7 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
                          filename="results_optimization_qn.csv")
 
     if model.Status == GRB.INFEASIBLE:
-        print("Il modello è infeasible. Analizzo il conflitto...")
+        print("Il modello è infeasible.")
         model.computeIIS()
         model.write("infeasible_model.ilp")  # Scrive il file con i vincoli responsabili dell'infeasibilità
         Q_N = 0

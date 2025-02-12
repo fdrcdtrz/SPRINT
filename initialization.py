@@ -119,6 +119,7 @@ def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, sig
     # kvis_service sono i tre kvi del servizio i-esimo richiesti, cioè le soglie output di LLM
     row = np.zeros(len(kvi_service))  # creo riga per i tre kvi del servizio i-esimo offerti da risorsa index_res-esima
     maximum = np.max(kvi_values, axis=0)
+    minimum = np.min(kvi_values, axis=0)
     # idea è normalizzarli in riferimento a quelli offerti dalla risorsa index_res-esima
 
     for index, attribute in enumerate(kvi_service):
@@ -127,16 +128,29 @@ def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, sig
             # index_res-esima
             max_val = maximum[index] # questo deve essere il valore
             # massimo per quell'attributo valutato su tutte le risorse per quel servizio
+            min_val = minimum[index]
 
             if exposed_kvi == attribute:
-                row[index] = 1 # cioè è esattamente quanto chiesto
+                row[index] = 1  # Se il valore ottenuto è esattamente quello richiesto
 
-            if max_val == requested:
-                row[index] = 1  # Se il valore massimo è uguale al valore richiesto, normalizza a 1
             else:
-                row[index] = 1 - (max_val - attribute) / (max_val - requested) if signs[index] == 1 else \
-                    1 - (attribute - max_val) / (requested - max_val)
-            row = np.clip(row, 0, 1)  # Forza tutti i valori tra 0 e 1
+                if signs[index] == 1:  # Beneficio: più alto è meglio
+                    if max_val == requested:  # Evita la divisione per zero
+                        row[index] = 1
+                    elif max_val == min_val:  # Se tutti i valori sono uguali, assegna 1
+                        row[index] = 1
+                    else:
+                        row[index] = (exposed_kvi - requested) / (max_val - requested)
+
+                else:  # Costo: più basso è meglio
+                    if min_val == requested:  # Evita la divisione per zero
+                        row[index] = 1
+                    elif max_val == min_val:  # Se tutti i valori sono uguali, assegna 1
+                        row[index] = 1
+                    else:
+                        row[index] = (max_val - exposed_kvi) / (max_val - min_val)
+
+            # row[index] = np.clip(row[index], 0, 1)  # Mantieni i valori tra 0 e 1
 
     return np.abs(row)
 
@@ -146,7 +160,7 @@ def compute_channel_gain_matrix(services, resources):
     gains = np.zeros((len(services), len(resources)))
     for i, service in enumerate(services):
         for j, resource in enumerate(resources):
-            gains[i, j] = random.uniform(0.1, 1.0)
+            gains[i, j] = random.uniform(0.5, 5.0)
     return gains
 
 
@@ -160,7 +174,7 @@ def compute_eavesdropper_gain(services, resources):
 
 # funzione calcolo computation time in h
 def compute_computation_time(service, resource):
-    return service.flops / (resource.n_c * resource.speed * resource.fpc * 3600)
+    return (service.flops / (resource.n_c * resource.speed * resource.fpc)) / 3600
 
 
 # funzione calcolo KVI sostenibilità ambientale
@@ -216,6 +230,7 @@ def normalize_single_row_kpi(kpi_service, kpi_service_req, resources, index_res,
     # kvis_service sono i tre kvi del servizio i-esimo richiesti, cioè le soglie output di LLM
     row = np.zeros(len(kpi_service))  # creo riga per i tre kvi del servizio i-esimo offerti da risorsa index_res-esima
     maximum = np.max(kpi_values, axis=0)
+    minimum = np.min(kpi_values, axis=0)
     # idea è normalizzarli in riferimento a quelli offerti dalla risorsa index_res-esima
 
     for index, attribute in enumerate(kpi_service):
@@ -223,16 +238,31 @@ def normalize_single_row_kpi(kpi_service, kpi_service_req, resources, index_res,
             exposed_kpi = resources[index_res].kpi_resource[index] # questo deve essere il vettore offerto dalla risorsa
             # index_res-esima
             max_val = maximum[index] # questo deve essere il valore
+            min_val = minimum[index]
             # massimo per quell'attributo valutato su tutte le risorse per quel servizio
 
             if exposed_kpi == attribute:
-                row[index] = 1 # cioè è esattamente quanto chiesto
-            if max_val == requested:
-                row[index] = 1  # Se il valore massimo è uguale al valore richiesto, normalizza a 1
+                row[index] = 1  # Se il valore ottenuto è esattamente quello richiesto
+
             else:
-                row[index] = 1 - (max_val - attribute) / (max_val - requested) if signs[index] == 1 else \
-                    1 - (attribute - max_val) / (requested - max_val)
-            row = np.clip(row, 0, 1)  # Forza tutti i valori tra 0 e 1
+                if signs[index] == 1:  # Beneficio: più alto è meglio
+                    if max_val == requested:  # Evita la divisione per zero
+                        row[index] = 1
+                    elif max_val == min_val:  # Se tutti i valori sono uguali, assegna 1
+                        row[index] = 1
+                    else:
+                        row[index] = (exposed_kpi - requested) / (max_val - requested)
+
+                else:  # Costo: più basso è meglio
+                    if min_val == requested:  # Evita la divisione per zero
+                        row[index] = 1
+                    elif max_val == min_val:  # Se tutti i valori sono uguali, assegna 1
+                        row[index] = 1
+                    else:
+                        row[index] = (max_val - exposed_kpi) / (max_val - min_val)
+
+            # row[index] = np.clip(row[index], 0, 1)  # Mantieni i valori tra 0 e 1
+
     return np.abs(row)
 
 def compute_normalized_kpi(services, resources, signs):
@@ -259,14 +289,8 @@ def compute_normalized_kpi(services, resources, signs):
     return normalized_kpi, weighted_sum_kpi
 
 def q_v_big_req(services, signs_kpi, signs_kvi):
-    kpi_tot = []
-    kvi_tot = []
-    temp_kpi = np.zeros(4)
-    temp_kvi = np.zeros(3)
-
-    for service in services:
-        kpi_tot.append(service.kpi_service_req)
-        kvi_tot.append(service.kvi_service_req)
+    kpi_tot = np.array([service.kpi_service_req for service in services])
+    kvi_tot = np.array([service.kvi_service_req for service in services])
 
     max_kpi_req = np.max(kpi_tot, axis=0)
     min_kpi_req = np.min(kpi_tot, axis=0)
@@ -274,38 +298,80 @@ def q_v_big_req(services, signs_kpi, signs_kvi):
     min_kvi_req = np.min(kvi_tot, axis=0)
 
     for service in services:
+        temp_kpi = np.zeros(len(service.kpi_service_req))
+        temp_kvi = np.zeros(len(service.kvi_service_req))
+
         for index, requested in enumerate(service.kpi_service_req):
-            if signs_kpi[index] == 1:
-                if max_kpi_req[index] > min_kpi_req[index]: # benefit
-                    temp_kpi[index] = (requested - min_kpi_req[index]) / (max_kpi_req[index] - min_kpi_req[index]) # singolo elemento normalizzato
-                else:
-                    temp_kpi[index] = 1
+            if max_kpi_req[index] > min_kpi_req[index]:  # Evita divisioni per zero
+                if signs_kpi[index] == 1:  # Beneficio: più alto è meglio
+                    temp_kpi[index] = (requested - min_kpi_req[index]) / (max_kpi_req[index] - min_kpi_req[index])
+                else:  # Costo: il valore più basso ottenibile deve essere 1, il più alto deve essere 0
+                    temp_kpi[index] = (requested - max_kpi_req[index]) / (min_kpi_req[index] - max_kpi_req[index])
             else:
-                if max_kpi_req[index] > min_kpi_req[index]: # cost
-                    temp_kpi[index] = (max_kpi_req[index] - requested) / (max_kpi_req[index] - min_kpi_req[index]) # singolo elemento normalizzato
-                else:
-                    temp_kpi[index] = 1
+                temp_kpi[index] = 1  # Se tutti i valori sono uguali, assegna 1
 
-        service.min_kpi = np.dot(service.weights_kpi, temp_kpi)
-        service.min_kpi = np.clip(service.min_kpi, 0, 1)
+        service.min_kpi = np.clip(np.dot(service.weights_kpi, temp_kpi), 0, 1)
 
-    for service in services:
         for index, requested in enumerate(service.kvi_service_req):
-            if signs_kvi[index] == 1:
-                if max_kvi_req[index] > min_kvi_req[index]:  # benefit
-                    temp_kvi[index] = (requested - min_kvi_req[index]) / (
-                                max_kvi_req[index] - min_kvi_req[index])  # singolo elemento normalizzato
-                else:
-                    temp_kvi[index] = 1
+            if max_kvi_req[index] > min_kvi_req[index]:  # Evita divisioni per zero
+                if signs_kvi[index] == 1:  # Beneficio
+                    temp_kvi[index] = (requested - min_kvi_req[index]) / (max_kvi_req[index] - min_kvi_req[index])
+                else:  # Costo: il valore più basso ottenibile deve essere 1, il più alto deve essere 0
+                    temp_kvi[index] = (requested - max_kvi_req[index]) / (min_kvi_req[index] - max_kvi_req[index])
             else:
-                if max_kvi_req[index] > min_kvi_req[index]:  # cost
-                    temp_kvi[index] = (max_kvi_req[index] - requested) / (
-                                max_kvi_req[index] - min_kvi_req[index])  # singolo elemento normalizzato
-                else:
-                    temp_kvi[index] = 1
+                temp_kvi[index] = 1  # Se tutti i valori sono uguali, assegna 1
 
-        service.min_kvi = np.dot(service.weights_kvi, temp_kvi)
-        service.min_kvi = np.clip(service.min_kvi, 0, 1)
+        service.min_kvi = np.clip(np.dot(service.weights_kvi, temp_kvi), 0, 1)
+
+
+# def q_v_big_req(services, signs_kpi, signs_kvi):
+#     kpi_tot = []
+#     kvi_tot = []
+#     temp_kpi = np.zeros(4)
+#     temp_kvi = np.zeros(3)
+#
+#     for service in services:
+#         kpi_tot.append(service.kpi_service_req)
+#         kvi_tot.append(service.kvi_service_req)
+#
+#     max_kpi_req = np.max(kpi_tot, axis=0)
+#     min_kpi_req = np.min(kpi_tot, axis=0)
+#     max_kvi_req = np.max(kvi_tot, axis=0)
+#     min_kvi_req = np.min(kvi_tot, axis=0)
+#
+#     for service in services:
+#         for index, requested in enumerate(service.kpi_service_req):
+#             if signs_kpi[index] == 1:
+#                 if max_kpi_req[index] > min_kpi_req[index]: # benefit
+#                     temp_kpi[index] = (requested - min_kpi_req[index]) / (max_kpi_req[index] - min_kpi_req[index]) # singolo elemento normalizzato
+#                 else:
+#                     temp_kpi[index] = 1
+#             else:
+#                 if max_kpi_req[index] > min_kpi_req[index]: # cost
+#                     temp_kpi[index] = (max_kpi_req[index] - requested) / (max_kpi_req[index] - min_kpi_req[index]) # singolo elemento normalizzato
+#                 else:
+#                     temp_kpi[index] = 1
+#
+#         service.min_kpi = np.dot(service.weights_kpi, temp_kpi)
+#         service.min_kpi = np.clip(service.min_kpi, 0, 1)
+#
+#     for service in services:
+#         for index, requested in enumerate(service.kvi_service_req):
+#             if signs_kvi[index] == 1:
+#                 if max_kvi_req[index] > min_kvi_req[index]:  # benefit
+#                     temp_kvi[index] = (requested - min_kvi_req[index]) / (
+#                                 max_kvi_req[index] - min_kvi_req[index])  # singolo elemento normalizzato
+#                 else:
+#                     temp_kvi[index] = 1
+#             else:
+#                 if max_kvi_req[index] > min_kvi_req[index]:  # cost
+#                     temp_kvi[index] = (max_kvi_req[index] - requested) / (
+#                                 max_kvi_req[index] - min_kvi_req[index])  # singolo elemento normalizzato
+#                 else:
+#                     temp_kvi[index] = 1
+#
+#         service.min_kvi = np.dot(service.weights_kvi, temp_kvi)
+#         service.min_kvi = np.clip(service.min_kvi, 0, 1)
 
 
 
