@@ -51,9 +51,9 @@ if __name__ == '__main__':
     # mi serve services[ind].parametro[index]
 
     services = [Service(j, demand=random.randint(1, 3), min_kpi=0, min_kvi=0, kpi_service_req=[random.uniform(200e-3, 600e-3), random.uniform(1e-6, 10), random.randint(1, 10), random.uniform(80, 100)], kvi_service_req=[random.randint(1, 5), random.uniform(0.8,1), random.randint(400,1000)], kpi_service=[random.uniform(100e-3, 200e-3), random.uniform(0.1, 100), random.randint(1, 50), random.uniform(0.1, 100)],
-                        kvi_service=[random.randint(1, 30), random.uniform(1e-6,1), random.randint(200,400)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=random.uniform(1E3,1E6), p_s=random.randint(1,5)) for j in range(20)]
+                        kvi_service=[random.randint(1, 30), random.uniform(1e-6,1), random.randint(200,400)], weights_kpi=[0.25, 0.25, 0.25, 0.25], weights_kvi=[0.33, 0.33, 0.33], flops=random.uniform(1E3,1E6), p_s=random.randint(1,5)) for j in range(170)]
 
-    resources = [Resource(n, availability=random.randint(25, 85), kpi_resource=[random.uniform(10e-3, 300e-3), random.randint(5, 50), random.randint(40, 200), random.randint(1, 20)], kvi_resource=[0,0,0], n_c=random.uniform(1, 4), P_c=random.randint(10, 50), u_c=random.uniform(0.001,1), n_m=random.randint(2e3, 6e3), P_m=random.randint(10, 50), speed=random.uniform(50e9, 150e9), fcp=random.uniform(1e6,1e9), N0=10e-10, lmbd=random.uniform(0.001,1)) for n in range(40)]
+    resources = [Resource(n, availability=random.randint(25, 85), kpi_resource=[random.uniform(10e-3, 300e-3), random.randint(5, 50), random.randint(40, 200), random.randint(1, 20)], kvi_resource=[0,0,0], n_c=random.uniform(1, 4), P_c=random.randint(10, 50), u_c=random.uniform(0.001,1), n_m=random.randint(2e3, 6e3), P_m=random.randint(10, 50), speed=random.uniform(50e9, 150e9), fcp=random.uniform(1e6,1e9), N0=10e-10, lmbd=random.uniform(0.001,1)) for n in range(200)]
 
     # test: da cambiare ogni normalized_kpi con weighted_sum_kpi e stessa cosa per kvi
 

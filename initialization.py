@@ -140,7 +140,7 @@ def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, sig
                     elif max_val == min_val:  # Se tutti i valori sono uguali, assegna 1
                         row[index] = 1
                     else:
-                        row[index] = (exposed_kvi - requested) / (max_val - requested)
+                        row[index] =1 - (max_val - exposed_kvi) / (max_val - requested)
 
                 else:  # Costo: più basso è meglio
                     if min_val == requested:  # Evita la divisione per zero
@@ -148,7 +148,7 @@ def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, sig
                     elif max_val == min_val:  # Se tutti i valori sono uguali, assegna 1
                         row[index] = 1
                     else:
-                        row[index] = (max_val - exposed_kvi) / (max_val - min_val)
+                        row[index] = 1 - (exposed_kvi - min_val) / (requested - min_val)
 
             # row[index] = np.clip(row[index], 0, 1)  # Mantieni i valori tra 0 e 1
 
@@ -251,7 +251,7 @@ def normalize_single_row_kpi(kpi_service, kpi_service_req, resources, index_res,
                     elif max_val == min_val:  # Se tutti i valori sono uguali, assegna 1
                         row[index] = 1
                     else:
-                        row[index] = (exposed_kpi - requested) / (max_val - requested)
+                        row[index] = 1 - (max_val - exposed_kpi) / (max_val - requested)
 
                 else:  # Costo: più basso è meglio
                     if min_val == requested:  # Evita la divisione per zero
@@ -259,7 +259,7 @@ def normalize_single_row_kpi(kpi_service, kpi_service_req, resources, index_res,
                     elif max_val == min_val:  # Se tutti i valori sono uguali, assegna 1
                         row[index] = 1
                     else:
-                        row[index] = (max_val - exposed_kpi) / (max_val - min_val)
+                        row[index] = 1 - (exposed_kpi - min_val) / (requested - min_val)
 
             # row[index] = np.clip(row[index], 0, 1)  # Mantieni i valori tra 0 e 1
 
