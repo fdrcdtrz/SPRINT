@@ -93,7 +93,7 @@ def save_assignment_results(assignment, services, resources, weighted_sum_kpi, w
 
     # Scrittura su CSV nel percorso corretto
     try:
-        with open(filepath, mode='w', newline='') as file:  # 🔥 Usa filepath qui
+        with open(filepath, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(["Service_ID", "Resource_ID", "Assigned",
                              "Normalized_KPI", "Normalized_KVI",
