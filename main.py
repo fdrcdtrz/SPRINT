@@ -47,7 +47,7 @@ if __name__ == '__main__':
     delta = 0.1
 
     for num_services in num_services_list:
-        results_dir = f"results_{num_services}_200_{delta}_1"
+        results_dir = f"benchmark_{num_services}_200_{delta}_1"
         os.makedirs(results_dir, exist_ok=True)  # Crea la cartella se non esiste
         # start = timer()
         start = time.time()
@@ -99,15 +99,15 @@ if __name__ == '__main__':
         # for (res_id, serv_id), norm_kvi in normalized_kvi.items():
         #     print(f"Resource {res_id} takes on service {serv_id} with normalized kvis of {norm_kvi}")
         #
-        V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, results_dir)
-        Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, results_dir)
-        V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I, results_dir)
-        Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I, results_dir)
+        # V_I = optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, results_dir)
+        # Q_I = optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, results_dir)
+        # V_N = v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_I, results_dir)
+        # Q_N = q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I, results_dir)
         # #
         # #
-        pareto_solutions_exact = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=delta, results_dir=results_dir)
-
-        plot_pareto_front(pareto_solutions_exact)
+        # pareto_solutions_exact = epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=delta, results_dir=results_dir)
+        #
+        # plot_pareto_front(pareto_solutions_exact)
         #save_pareto_solutions(pareto_solutions_exact, filename="pareto_solutions.csv")
         #
         # pareto_solutions_filtered = filter_pareto_solutions(pareto_solutions_exact)
@@ -131,21 +131,21 @@ if __name__ == '__main__':
 
         #print(pareto_solutions)
 
-        # assignment, total_kpi, total_kvi = greedy_assignment_kpi(services, resources, weighted_sum_kpi)
-        # save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
-        #                         normalized_kpi, normalized_kvi, total_kpi, total_kvi, "greedy_kpi_results.csv")
-        #
-        # assignment, total_kpi, total_kvi = greedy_assignment_kvi(services, resources, weighted_sum_kvi)
-        # save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
-        #                         normalized_kpi, normalized_kvi, total_kpi, total_kvi, "greedy_kvi_results.csv")
-        #
-        # assignment, total_kpi, total_kvi = random_assignment(services, resources, weighted_sum_kpi, weighted_sum_kvi)
-        # save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
-        #                         normalized_kpi, normalized_kvi, total_kpi, total_kvi, "random_results.csv")
+        assignment, total_kpi, total_kvi = greedy_assignment_kpi(services, resources, weighted_sum_kpi, weighted_sum_kvi, max_assignments=10)
+        save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
+                                normalized_kpi, normalized_kvi, total_kpi, total_kvi, results_dir=results_dir, filename="greedy_kpi_results.csv")
+
+        assignment, total_kpi, total_kvi = greedy_assignment_kvi(services, resources, weighted_sum_kvi, weighted_sum_kpi, max_assignments=10)
+        save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
+                                normalized_kpi, normalized_kvi, total_kpi, total_kvi, results_dir=results_dir, filename="greedy_kvi_results.csv")
+
+        assignment, total_kpi, total_kvi = random_assignment(services, resources, weighted_sum_kpi, weighted_sum_kvi)
+        save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi,
+                                normalized_kpi, normalized_kvi, total_kpi, total_kvi, results_dir=results_dir, filename="random_results.csv")
 
         # end = timer()
-        pareto_filename = os.path.join(results_dir, "pareto_solutions.csv")
-        save_pareto_solutions(pareto_solutions_exact, filename=pareto_filename)
+        # pareto_filename = os.path.join(results_dir, "pareto_solutions.csv")
+        # save_pareto_solutions(pareto_solutions_exact, filename=pareto_filename)
 
         # Tempo di esecuzione
         end_time = time.time()
