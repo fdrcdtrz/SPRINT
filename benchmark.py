@@ -4,52 +4,72 @@ from initialization import *
 import random
 import csv
 import time
-def greedy_assignment_kpi(services, resources, weighted_sum_kpi, weighted_sum_kvi):
-    assignment = {}
-    total_kpi = 0
-    total_kvi = 0
+def greedy_assignment_kpi(services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=100):
+    total_kpi_sum = 0
+    total_kvi_sum = 0
 
-    sorted_services = sorted(services, key=lambda s: -max(weighted_sum_kpi.get((r.id, s.id), 0) for r in resources))
+    for _ in range(num_seeds):
+        assignment = {}
+        total_kpi = 0
+        total_kvi = 0
 
-    for s in sorted_services:
-        best_resource = max(resources, key=lambda r: weighted_sum_kpi.get((r.id, s.id), 0))
-        assignment[s.id] = best_resource.id
-        total_kpi += weighted_sum_kpi.get((best_resource.id, s.id), 0)
-        total_kvi += weighted_sum_kvi.get((best_resource.id, s.id), 0)  # Per tracciare anche il KVI ottenuto
+        sorted_services = sorted(services, key=lambda s: -max(weighted_sum_kpi.get((r.id, s.id), 0) for r in resources))
 
-    return assignment, total_kpi, total_kvi
+        for s in sorted_services:
+            best_resource = max(resources, key=lambda r: weighted_sum_kpi.get((r.id, s.id), 0))
+            assignment[s.id] = best_resource.id
+            total_kpi += weighted_sum_kpi.get((best_resource.id, s.id), 0)
+            total_kvi += weighted_sum_kvi.get((best_resource.id, s.id), 0)
 
+        total_kpi_sum += total_kpi
+        total_kvi_sum += total_kvi
 
-
-def greedy_assignment_kvi(services, resources, weighted_sum_kvi, weighted_sum_kpi):
-    assignment = {}
-    total_kpi = 0  # Per coerenza, ma non è l'obiettivo principale qui
-    total_kvi = 0
-
-    sorted_services = sorted(services, key=lambda s: -max(weighted_sum_kvi.get((r.id, s.id), 0) for r in resources))
-
-    for s in sorted_services:
-        best_resource = max(resources, key=lambda r: weighted_sum_kvi.get((r.id, s.id), 0))
-        assignment[s.id] = best_resource.id
-        total_kpi += weighted_sum_kpi.get((best_resource.id, s.id), 0)  # Per tracciare anche il KPI ottenuto
-        total_kvi += weighted_sum_kvi.get((best_resource.id, s.id), 0)
-
-    return assignment, total_kpi, total_kvi
+    return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
 
 
+def greedy_assignment_kvi(services, resources, weighted_sum_kvi, weighted_sum_kpi, num_seeds=100):
+    total_kpi_sum = 0
+    total_kvi_sum = 0
 
-def random_assignment(services, resources, weighted_sum_kpi, weighted_sum_kvi):
-    assignment = {}
-    total_kpi = 0
-    total_kvi = 0
+    for _ in range(num_seeds):
+        assignment = {}
+        total_kpi = 0
+        total_kvi = 0
 
-    for s in services:
-        chosen_resource = random.choice(resources)
-        assignment[s.id] = chosen_resource.id
-        total_kpi += weighted_sum_kpi.get((chosen_resource.id, s.id), 0)
-        total_kvi += weighted_sum_kvi.get((chosen_resource.id, s.id), 0)
+        sorted_services = sorted(services, key=lambda s: -max(weighted_sum_kvi.get((r.id, s.id), 0) for r in resources))
 
-    return assignment, total_kpi, total_kvi
+        for s in sorted_services:
+            best_resource = max(resources, key=lambda r: weighted_sum_kvi.get((r.id, s.id), 0))
+            assignment[s.id] = best_resource.id
+            total_kpi += weighted_sum_kpi.get((best_resource.id, s.id), 0)
+            total_kvi += weighted_sum_kvi.get((best_resource.id, s.id), 0)
+
+        total_kpi_sum += total_kpi
+        total_kvi_sum += total_kvi
+
+    return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
+
+
+def random_assignment(services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=100):
+    total_kpi_sum = 0
+    total_kvi_sum = 0
+
+    for _ in range(num_seeds):
+        assignment = {}
+        total_kpi = 0
+        total_kvi = 0
+
+        for s in services:
+            chosen_resource = random.choice(resources)
+            assignment[s.id] = chosen_resource.id
+            total_kpi += weighted_sum_kpi.get((chosen_resource.id, s.id), 0)
+            total_kvi += weighted_sum_kvi.get((chosen_resource.id, s.id), 0)
+
+        total_kpi_sum += total_kpi
+        total_kvi_sum += total_kvi
+
+    return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
+
 
 
 def save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
