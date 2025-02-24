@@ -3,30 +3,6 @@ from optimization import *
 from initialization import *
 import random
 import csv
-import time
-# def greedy_assignment_kpi(services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=100):
-#     total_kpi_sum = 0
-#     total_kvi_sum = 0
-#
-#     for _ in range(num_seeds):
-#         assignment = {}
-#         total_kpi = 0
-#         total_kvi = 0
-#
-#         sorted_services = sorted(services, key=lambda s: -max(weighted_sum_kpi.get((r.id, s.id), 0) for r in resources))
-#
-#         for s in sorted_services:
-#             best_resource = max(resources, key=lambda r: weighted_sum_kpi.get((r.id, s.id), 0))
-#             assignment[s.id] = best_resource.id
-#             total_kpi += weighted_sum_kpi.get((best_resource.id, s.id), 0)
-#             total_kvi += weighted_sum_kvi.get((best_resource.id, s.id), 0)
-#
-#         total_kpi_sum += total_kpi
-#         total_kvi_sum += total_kvi
-#
-#     return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
-
-import heapq
 import random
 
 def greedy_assignment_kpi(services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500, max_assignments=10):
@@ -70,70 +46,6 @@ def greedy_assignment_kpi(services, resources, weighted_sum_kpi, weighted_sum_kv
     return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
 
 
-
-# def greedy_assignment_kvi(services, resources, weighted_sum_kvi, weighted_sum_kpi, num_seeds=100):
-#     total_kpi_sum = 0
-#     total_kvi_sum = 0
-#
-#     for _ in range(num_seeds):
-#         assignment = {}
-#         total_kpi = 0
-#         total_kvi = 0
-#
-#         sorted_services = sorted(services, key=lambda s: -max(weighted_sum_kvi.get((r.id, s.id), 0) for r in resources))
-#
-#         for s in sorted_services:
-#             best_resource = max(resources, key=lambda r: weighted_sum_kvi.get((r.id, s.id), 0))
-#             assignment[s.id] = best_resource.id
-#             total_kpi += weighted_sum_kpi.get((best_resource.id, s.id), 0)
-#             total_kvi += weighted_sum_kvi.get((best_resource.id, s.id), 0)
-#
-#         total_kpi_sum += total_kpi
-#         total_kvi_sum += total_kvi
-#
-#     return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
-
-import random
-
-def greedy_assignment_kvi(services, resources, weighted_sum_kvi, weighted_sum_kpi, num_seeds=500, max_assignments=10):
-    total_kpi_sum = 0
-    total_kvi_sum = 0
-
-    for _ in range(num_seeds):
-        assignment = {}
-        total_kpi = 0
-        total_kvi = 0
-
-        # Mappa per tenere traccia del numero di assegnazioni per risorsa
-        resource_usage = {r.id: 0 for r in resources}
-
-        # Ordina i servizi per massimizzare il KVI
-        sorted_services = sorted(services, key=lambda s: -max(weighted_sum_kvi.get((r.id, s.id), 0) for r in resources))
-
-        for s in sorted_services:
-            # Seleziona solo risorse che non hanno raggiunto il massimo utilizzo
-            valid_resources = [r for r in resources if resource_usage[r.id] < max_assignments]
-
-            if valid_resources:
-                # Se ci sono risorse disponibili, sceglie la migliore per il KVI
-                best_resource = max(valid_resources, key=lambda r: weighted_sum_kvi.get((r.id, s.id), 0))
-            else:
-                # Se tutte hanno raggiunto il limite, sceglie casualmente
-                best_resource = random.choice(resources)
-
-            # Assegna la risorsa e aggiorna il conteggio delle assegnazioni
-            assignment[s.id] = best_resource.id
-            resource_usage[best_resource.id] += 1
-
-            # Aggiorna KPI e KVI totali
-            total_kpi += weighted_sum_kpi.get((best_resource.id, s.id), 0)
-            total_kvi += weighted_sum_kvi.get((best_resource.id, s.id), 0)
-
-        total_kpi_sum += total_kpi
-        total_kvi_sum += total_kvi
-
-    # Restituisce la media sui 50 tentativi
-    return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
 
 def random_assignment(services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=100):
     total_kpi_sum = 0
@@ -196,7 +108,6 @@ def save_assignment_results(assignment, services, resources, weighted_sum_kpi, w
                 list_r_kpi_resource, list_r_kvi_resource
             ])
 
-    # Scrittura su CSV nel percorso corretto
     try:
         with open(filepath, mode='w', newline='') as file:
             writer = csv.writer(file)

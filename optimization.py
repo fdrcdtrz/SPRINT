@@ -159,6 +159,11 @@ def optimize_kpi(services, resources, normalized_kpi, normalized_kvi, weighted_s
 
     model.optimize()
 
+    model.optimize()
+    if model.IsMIP == 1:
+        print("The model is a MIP.")
+
+
     # Risultati
     if model.status == GRB.OPTIMAL:
         print("\nSoluzione Ottima:")
@@ -236,6 +241,9 @@ def optimize_kvi(services, resources, normalized_kpi, normalized_kvi, weighted_s
     )
 
     model.optimize()
+    model.optimize()
+    if model.IsMIP == 1:
+        print("The model is a MIP.")
 
     # Risultati
     if model.status == GRB.OPTIMAL:
@@ -315,6 +323,10 @@ def q_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
     model.optimize()
     print(f"DEBUG: Q_N calcolato = {model.ObjVal}")
 
+    model.optimize()
+    if model.IsMIP == 1:
+        print("The model is a MIP.")
+
     # Risultati
     if model.status == GRB.OPTIMAL:
         print("\nSoluzione Ottima:")
@@ -392,6 +404,10 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
     )
 
     model.optimize()
+
+    model.optimize()
+    if model.IsMIP == 1:
+        print("The model is a MIP.")
 
     # Risultati
     if model.status == GRB.OPTIMAL:
@@ -486,83 +502,6 @@ def v_nadir(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kp
 #         epsilon = kvi_value - delta
 #
 #     return pareto_solutions
-
-def branch_and_bound_pareto(services, resources, normalized_kpi, normalized_kvi,
-                            weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=0.01):
-    """
-    Risolve il problema MILP con Branch-and-Bound classico per generare il fronte di Pareto.
-    """
-    pareto_solutions = []
-    epsilon = Q_N - delta  # Valore iniziale di epsilon
-
-    while epsilon >= Q_I:
-        # Creazione del modello
-        model = gurobipy.Model("Branch-and-Bound_Pareto")
-
-        # Variabili di decisione binarie
-        x = model.addVars(
-            [(s.id, r.id) for s in services for r in resources],
-            vtype=GRB.BINARY,
-            name="x"
-        )
-
-        # Vincoli:
-        model.addConstr(
-            sum(weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources) >= epsilon,
-            "epsilon_kpi"
-        )
-
-        # Vincolo KPI e KVI minimo da soddisfare
-        for s in services:
-            for r in resources:
-                model.addConstr(
-                    (weighted_sum_kpi[(r.id, s.id)] - s.min_kpi) * x[s.id, r.id] >= 0,
-                    f"kpi_threshold_{s.id}_{r.id}"
-                )
-                model.addConstr(
-                    (weighted_sum_kvi[(r.id, s.id)] - s.min_kvi) * x[s.id, r.id] >= 0,
-                    f"kvi_threshold_{s.id}_{r.id}"
-                )
-
-        # Ogni servizio è assegnato a una sola risorsa
-        for s in services:
-            model.addConstr(sum(x[s.id, r.id] for r in resources) == 1, f"assign_service_{s.id}")
-
-        # Capacità della risorsa non deve essere superata
-        for r in resources:
-            model.addConstr(
-                sum(x[s.id, r.id] * s.demand for s in services) <= r.availability,
-                f"capacity_{r.id}"
-            )
-
-        # Funzione obiettivo: massimizzare KVI
-        model.setObjective(
-            sum(weighted_sum_kvi[(r.id, s.id)] * x[s.id, r.id] for s in services for r in resources),
-            GRB.MAXIMIZE
-        )
-
-        model.setParam(GRB.Param.Heuristics, 0.0)  # Disattiva tutte le euristiche
-        model.setParam(GRB.Param.Cuts, 0)  # Nessun taglio
-        model.setParam(GRB.Param.Presolve, 0)  # Nessun pre-processing
-        model.setParam(GRB.Param.MIPFocus, 0)  # Nessuna priorità nella ricerca
-        model.setParam(GRB.Param.BranchDir, 1)  # Forza Gurobi a fare branching sempre nella stessa direzione
-
-        # Risoluzione del modello
-        model.optimize()
-
-        # Salva la soluzione se ottimale
-        if model.status == GRB.OPTIMAL:
-            kpi_value = sum(
-                weighted_sum_kpi[(r.id, s.id)] * x[s.id, r.id].x for s in services for r in resources
-            )
-            kvi_value = model.ObjVal
-            pareto_solutions.append((kpi_value, kvi_value))
-            print(f"Epsilon: {epsilon}, KPI: {kpi_value}, KVI: {kvi_value}")
-
-        # Aggiorna epsilon per la prossima iterazione
-        epsilon -= delta
-
-    return pareto_solutions
 
 
 # def cut_and_solve(services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I,
@@ -1200,6 +1139,8 @@ def epsilon_constraint_exact(services, resources, normalized_kpi, normalized_kvi
 
         # Risolvi il modello
         model.optimize()
+        if model.IsMIP == 1:
+            print("The model is a MIP.")
 
         # Salva la soluzione
         if model.status == GRB.OPTIMAL:

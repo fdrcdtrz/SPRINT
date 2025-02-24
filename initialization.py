@@ -160,7 +160,7 @@ def compute_channel_gain_matrix(services, resources):
     gains = np.zeros((len(services), len(resources)))
     for i, service in enumerate(services):
         for j, resource in enumerate(resources):
-            gains[i, j] = random.uniform(0.5, 5.0)
+            gains[i, j] = random.uniform(1, 5)
     return gains
 
 
@@ -174,13 +174,13 @@ def compute_eavesdropper_gain(services, resources):
 
 # funzione calcolo computation time in h
 def compute_computation_time(service, resource):
-    return (service.flops / (resource.n_c * resource.speed * resource.fpc)) / 3600
+    return (service.flops / (resource.n_c * resource.speed * resource.fpc)) / 3600 # per passare da secondi ad ore
 
 
 # funzione calcolo KVI sostenibilità ambientale
 def compute_energy_sustainability(resource, computation_time, CI=475, PUE=1.67):
     return computation_time * (
-            resource.n_c * resource.P_c * resource.u_c + resource.n_m * resource.P_m) * PUE * CI * 0.001
+            resource.n_c * resource.P_c * resource.u_c + resource.n_m * resource.P_m) * PUE * CI
 
 
 # funzione calcolo KVI trustworthiness
@@ -191,7 +191,7 @@ def compute_secrecy_capacity(service, channel_gain, eavesdropper_gain, resource)
 
 # funzione calcolo KVI inclusiveness
 def compute_failure_probability(computation_time, resource):
-    return 1 - np.exp(-computation_time / resource.lmbd)
+    return 1 - np.exp((1 / resource.lmbd) * computation_time)
 
 
 def compute_normalized_kvi(services, resources, CI, signs):
@@ -211,6 +211,9 @@ def compute_normalized_kvi(services, resources, CI, signs):
                                                         resource)
             energy_sustainability = compute_energy_sustainability(resource, compute_computation_time(service, resource), CI)
             failure_probability = compute_failure_probability(compute_computation_time(service, resource), resource)
+
+            print(f"For ({service.id}, {resource.id}: secrecy capacity di {secrecy_capacity} bits/s/Hz, energy "
+                  f"sustainability di {energy_sustainability} in gCO2e, inclusiveness di {failure_probability}")
 
             kvi_values.append([secrecy_capacity, failure_probability, energy_sustainability])
             resource.kvi_resource = [secrecy_capacity, failure_probability, energy_sustainability]
