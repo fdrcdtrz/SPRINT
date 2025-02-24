@@ -268,7 +268,11 @@ if __name__ == '__main__':
             #  Total value lagrangian
             total_value_lagrangian = compute_total_value_lagrangian(services, resources, item_assignment,
                                                                     weighted_sum_kpi, weighted_sum_kvi,
-                                                                    lambda_, mu_, nu_, alpha=0.5)
+                                                                    lambda_, mu_, nu_, total_value_not_lagrangian, alpha=0.5)
+
+            print("Valore totale lagrangiano:", total_value_not_lagrangian)
+            print("Valore totale lagrangiano corretto:", total_value_lagrangian)
+            print("Assegnazione lagrangiana:", item_assignment)
 
             # Riparazione
             item_assignment_repaired = repair_solution(
@@ -279,6 +283,9 @@ if __name__ == '__main__':
             total_value_feasible = compute_total_value(
                 services, resources, item_assignment_repaired, weighted_sum_kpi, weighted_sum_kvi
             )
+
+            print("Valore totale riparato:", total_value_feasible)
+            print("Assegnazione riparata:", item_assignment_repaired)
 
             # Aggiorna i moltiplicatori di Lagrange, lo step size, UB e LB
             lambda_, mu_, nu_, UB, LB = update_lagrangian_multipliers(

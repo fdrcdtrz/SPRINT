@@ -70,33 +70,32 @@ def multi_knapsack_dp(services, resources, weighted_sum_kpi, weighted_sum_kvi, l
 
 
 def compute_total_value_lagrangian(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
-                                   lambda_, mu_, nu_, alpha=0.5):
-    total_value_lagrangian = 0
-    penalty_kpi = 0
-    penalty_kvi = 0
+                                   lambda_, mu_, nu_, total_value, alpha=0.5):
+    # penalty_kpi = 0
+    # penalty_kvi = 0
 
-    for j, assigned_r in enumerate(item_assignment):
-        if assigned_r != -1:  # Se il servizio è assegnato
-            s = services[j]
-            r = resources[assigned_r]
-            kpi_value = weighted_sum_kpi.get((s.id, r.id), 0)
-            kvi_value = weighted_sum_kvi.get((s.id, r.id), 0)
-
-            # Valore della funzione obiettivo con KPI e KVI
-            service_value = alpha * kpi_value + (1 - alpha) * kvi_value
-            total_value_lagrangian += service_value
-
-            # Penalizzazioni per KPI e KVI violati
-            penalty_kpi += lambda_[j, assigned_r] * (s.min_kpi - kpi_value)
-            penalty_kvi += mu_[j, assigned_r] * (s.min_kvi - kvi_value)
+    # for j, assigned_r in enumerate(item_assignment):
+    #     if assigned_r != -1:  # Se il servizio è assegnato
+    #         s = services[j]
+    #         r = resources[assigned_r]
+    #         kpi_value = weighted_sum_kpi.get((s.id, r.id), 0)
+    #         kvi_value = weighted_sum_kvi.get((s.id, r.id), 0)
+    #
+    #         # Valore della funzione obiettivo con KPI e KVI
+    #         service_value = alpha * kpi_value + (1 - alpha) * kvi_value
+    #         total_value_lagrangian += service_value
+    #
+    #         # Penalizzazioni per KPI e KVI violati
+    #         penalty_kpi += lambda_[j, assigned_r] * (s.min_kpi - kpi_value)
+    #         penalty_kvi += mu_[j, assigned_r] * (s.min_kvi - kvi_value)
 
     # Penalizzazione vincolo di assegnazione, quindi la sommatoria finale
     penalty_nu = np.sum(nu_)
 
     # Valore totale considerando tutte le penalizzazioni
-    total_value_lagrangian += penalty_kpi + penalty_kvi + penalty_nu
+    total_value += penalty_nu
 
-    return total_value_lagrangian
+    return total_value
 
 
 def save_results_csv_lagrangian(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi, results_dir,
@@ -218,7 +217,7 @@ def compute_total_value(services, resources, item_assignment, weighted_sum_kpi, 
 
 
 def update_lagrangian_multipliers(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
-                                  lambda_, mu_, nu_, UB, LB, total_value_lagrangian, total_value_feasible, z=1.5):
+                                  lambda_, mu_, nu_, UB, LB, total_value_lagrangian, total_value_feasible, z=0.1):
     # Calcolo dei subgradienti
     gamma_lambda = np.zeros((len(services), len(resources)))
     gamma_mu = np.zeros((len(services), len(resources)))

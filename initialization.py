@@ -174,7 +174,7 @@ def compute_eavesdropper_gain(services, resources):
 
 # funzione calcolo computation time in h
 def compute_computation_time(service, resource):
-    return (service.flops / (resource.n_c * resource.speed * resource.fpc)) / 3600 # per passare da secondi ad ore
+    return (service.flops / (resource.n_c * resource.speed * resource.fpc)) / 3600 # per passare da secondi a ore
 
 
 # funzione calcolo KVI sostenibilità ambientale
@@ -214,6 +214,8 @@ def compute_normalized_kvi(services, resources, CI, signs):
 
             print(f"For ({service.id}, {resource.id}: secrecy capacity di {secrecy_capacity} bits/s/Hz, energy "
                   f"sustainability di {energy_sustainability} in gCO2e, inclusiveness di {failure_probability}")
+
+            print(secrecy_capacity, energy_sustainability, failure_probability)
 
             kvi_values.append([secrecy_capacity, failure_probability, energy_sustainability])
             resource.kvi_resource = [secrecy_capacity, failure_probability, energy_sustainability]
@@ -298,7 +300,7 @@ def q_v_big_req(services, signs_kpi, signs_kvi):
     max_kpi_req = np.max(kpi_tot, axis=0)
     min_kpi_req = np.min(kpi_tot, axis=0)
     max_kvi_req = np.max(kvi_tot, axis=0)
-    min_kvi_req = np.min(kvi_tot, axis=0)
+    min_kvi_req = np.min(kvi_tot, 0)
 
     for service in services:
         temp_kpi = np.zeros(len(service.kpi_service_req))
