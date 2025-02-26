@@ -245,14 +245,15 @@ if __name__ == '__main__':
         # print(f"Nuovo UB: {UB}, Nuovo LB: {LB}")
 
         # Parametri del metodo subgradiente
-        max_iterations = 100  # Numero massimo di iterazioni
+        max_iterations = 20  # Numero massimo di iterazioni
         tolerance = 1e-3  # Soglia di convergenza
-        z = 1.5  # Parametro per lo step size
+        z = 0.5  # Parametro per lo step size
 
         # Inizializzazione dei moltiplicatori lagrangiani
-        lambda_ = np.ones((len(services), len(resources))) * 0.1
-        mu_ = np.ones((len(services), len(resources))) * 0.1
-        nu_ = np.ones(len(services)) * 0.1
+        lambda_ = np.ones(len(services)) * 0.1
+        print(lambda_)
+        # mu_ = np.ones((len(services), len(resources))) * 0.1
+        # nu_ = np.ones(len(services)) * 0.1
 
         # Inizializzazione dei bound
         UB = float("inf")  # Upper Bound iniziale
@@ -262,17 +263,26 @@ if __name__ == '__main__':
         for k in range(max_iterations):
             # Zaini
             total_value_not_lagrangian, item_assignment = multi_knapsack_dp(
-                services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_, mu_, nu_
+                services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_
             )
 
             #  Total value lagrangian
             total_value_lagrangian = compute_total_value_lagrangian(services, resources, item_assignment,
                                                                     weighted_sum_kpi, weighted_sum_kvi,
-                                                                    lambda_, mu_, nu_, total_value_not_lagrangian, alpha=0.5)
+                                                                    lambda_, total_value_not_lagrangian, alpha=0.5)
 
             print("Valore totale lagrangiano:", total_value_not_lagrangian)
             print("Valore totale lagrangiano corretto:", total_value_lagrangian)
             print("Assegnazione lagrangiana:", item_assignment)
+
+            if is_feasible_solution(services, resources, item_assignment, weighted_sum_kpi,
+                                    weighted_sum_kvi):
+                print(f"Soluzione feasible trovata all'iterazione {k + 1}, interrompo l'ottimizzazione.")
+                save_results_csv_lagrangian(
+                    services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
+                    results_dir=results_dir, filename=f"iteration_{k + 1}.csv"
+                )
+                break
 
             # Riparazione
             item_assignment_repaired = repair_solution(
@@ -288,9 +298,9 @@ if __name__ == '__main__':
             print("Assegnazione riparata:", item_assignment_repaired)
 
             # Aggiorna i moltiplicatori di Lagrange, lo step size, UB e LB
-            lambda_, mu_, nu_, UB, LB = update_lagrangian_multipliers(
+            lambda_, UB, LB = update_lagrangian_multipliers(
                 services, resources, item_assignment_repaired, weighted_sum_kpi, weighted_sum_kvi,
-                lambda_, mu_, nu_, UB, LB, total_value_lagrangian, total_value_feasible, z
+                lambda_, UB, LB, total_value_lagrangian, total_value_feasible, z
             )
 
             save_results_csv_lagrangian(
