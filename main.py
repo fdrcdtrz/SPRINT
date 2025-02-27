@@ -54,9 +54,9 @@ class Resource:
 
 if __name__ == '__main__':
 
-    num_services_list = [5]
+    num_services_list = [100]
     delta = 0.1
-    num_resources = 5
+    num_resources = 100
     min_kpi = 0
     min_kvi = 0
     weights_kpi = [1 / 3, 1 / 3, 1 / 3]
