@@ -65,7 +65,10 @@ if __name__ == '__main__':
 
     for num_services in num_services_list:
         results_dir = f"test_benchmark_{num_services}_200_{delta}_1"
-        os.makedirs(results_dir, exist_ok=True)  # Crea la cartella se non esiste
+        path_onedrive = (r"C:\Users\Federica\OneDrive - Politecnico di Bari\phd\works\comnet\Simulazioni")
+        full_path = os.path.join(path_onedrive, results_dir)
+        os.makedirs(full_path, exist_ok=True)
+
         # start = timer()
         start = time.time()
         # random.seed(30)
