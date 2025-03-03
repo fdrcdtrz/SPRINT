@@ -13,6 +13,8 @@ import os
 
 
 class Service:
+
+
     def __init__(self, id, demand, min_kpi, min_kvi, kpi_service_req, kvi_service_req, kpi_service, kvi_service,
                  weights_kpi, weights_kvi, flops, p_s):
         self.id = id
@@ -28,8 +30,81 @@ class Service:
         self.flops = flops
         self.p_s = p_s
 
-    def __getitem__(self, key):
-        return getattr(self, key, None)  # Restituisce l'attributo se esiste, altrimenti None
+    #property            # first decorate the getter method
+    def get_id(self): # This getter method name is *the* name
+        return self.id
+
+    def get_demand(self): # This getter method name is *the* name
+        return self.demand
+
+    def get_min_kpi(self): # This getter method name is *the* name
+        return self.min_kpi
+
+    def get_min_kvi(self): # This getter method name is *the* name
+        return self.min_kvi
+
+    def get_kpi_service_req(self): # This getter method name is *the* name
+        return self.kpi_service_req
+
+    def get_kvi_service_req(self):  # This getter method name is *the* name
+        return self.kvi_service_req
+
+    def get_kpi_service(self):  # This getter method name is *the* name
+        return self.kpi_service
+
+    def get_kvi_service(self):  # This getter method name is *the* name
+        return self.kvi_service
+
+    def get_weights_kpi(self):  # This getter method name is *the* name
+        return self.weights_kpi
+
+    def get_weights_kvi(self):  # This getter method name is *the* name
+        return self.weights_kvi
+
+    def get_flops(self):  # This getter method name is *the* name
+        return self.flops
+
+    def get_p_s(self):  # This getter method name is *the* name
+        return self.p_s
+
+    def set_id(self, value):  # This getter method name is *the* name
+        self.id = value
+
+    def set_demand(self, value):  # This setter method name is *the* name
+        self.demand = value
+
+    def set_min_kpi(self, value):  # This setter method name is *the* name
+        self.min_kpi = value
+
+    def set_min_kvi(self, value):  # This setter method name is *the* name
+        self.min_kvi = value
+
+    def set_kpi_service_req(self, value):  # This setter method name is *the* name
+        self.kpi_service_req = value
+
+    def set_kvi_service_req(self, value):  # This setter method name is *the* name
+        self.kvi_service_req = value
+
+    def set_kpi_service(self, value):  # This setter method name is *the* name
+        self.kpi_service = value
+
+    def set_kvi_service(self, value):  # This setter method name is *the* name
+        self.kvi_service = value
+
+    def set_weights_kpi(self, value):  # This setter method name is *the* name
+        self.weights_kpi = value
+
+    def set_weights_kvi(self, value):  # This setter method name is *the* name
+        self.weights_kvi = value
+
+    def set_flops(self, value):  # This setter method name is *the* name
+        self.flops = value
+
+    def set_p_s(self, value):  # This setter method name is *the* name
+        self.p_s = value
+
+
+
 
 
 class Resource:
@@ -57,8 +132,6 @@ if __name__ == '__main__':
     num_services_list = [5]
     delta = 0.1
     num_resources = 5
-    min_kpi = 0
-    min_kvi = 0
     weights_kpi = [1 / 3, 1 / 3, 1 / 3]
     weights_kvi = [1 / 3, 1 / 3, 1 / 3]
     services = [
@@ -89,12 +162,13 @@ if __name__ == '__main__':
 
     for num_services in num_services_list:
         results_dir = f"test_benchmark_{num_services}_200_{delta}_1"
-        path_onedrive = (r"C:\Users\Federica\OneDrive - Politecnico di Bari\phd\works\comnet\Simulazioni")
-        full_path = os.path.join(path_onedrive, results_dir)
+        #path_onedrive = r"C:\Users\Federica\OneDrive - Politecnico di Bari\phd\works\comnet\Simulazioni"
+        path_locale = r"C:\Users\Federica de Trizio\PycharmProjects\CutAndSolve"
+        full_path = os.path.join(path_locale, results_dir)
         os.makedirs(full_path, exist_ok=True)
 
         # Probabilità assegnate ai servizi (esempio: servizio 2 e 3 più richiesti)
-        probabilities = [0.1, 0.2, 0.4, 0.3]  # Somma = 1
+        probabilities = [0.1, 0.2, 0.4, 0.3]
 
         # Generazione delle richieste basate sulla distribuzione
         service_requests = np.random.choice(range(len(services)), size=num_services, p=probabilities)
@@ -122,6 +196,11 @@ if __name__ == '__main__':
         fcp_values = np.random.randint(1000, 1000000, num_resources)
         N0 = 10e-10
         lmbd_values = np.random.randint(1, 100, num_resources)
+
+        # congiunti
+
+        gain_values_eavesdropper = np.random.uniform(0.05, 0.5, num_resources * num_services)
+        gain_values = np.random.uniform(1, 5, num_resources * num_services)
 
         # Indicators offered by the resources
 
@@ -175,7 +254,7 @@ if __name__ == '__main__':
                 # print(computation_time)
 
         # TIS
-        normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1,
+        normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, resources, CI=475, signs=[1, -1,
                                                                                                       -1])  #
         # trustworthiness inclusiveness sustainability
 

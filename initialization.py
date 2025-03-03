@@ -151,26 +151,26 @@ def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, sig
                     else:
                         row[index] = 1 - (exposed_kvi - min_val) / (requested - min_val)
 
-            # row[index] = np.clip(row[index], 0, 1)  # Mantieni i valori tra 0 e 1
+            # row[index] = np.clip(row[index], 0, 1)
 
     return np.abs(row)
 
 
 # funzione calcolo channel gain
-def compute_channel_gain_matrix(services, resources):
-    gains = np.zeros((len(services), len(resources)))
-    for i, service in enumerate(services):
-        for j, resource in enumerate(resources):
-            gains[i, j] = random.uniform(1, 5)
-    return gains
-
-
-def compute_eavesdropper_gain(services, resources):
-    gains_eavesdropper = np.zeros((len(services), len(resources)))
-    for i, service in enumerate(services):
-        for j, resource in enumerate(resources):
-            gains_eavesdropper[i, j] = random.uniform(0.05, 0.5)  # same
-    return gains_eavesdropper
+# def compute_channel_gain_matrix(services, resources, gain_values):
+#     gains = np.zeros((len(services), len(resources)))
+#     for i, service in enumerate(services):
+#         for j, resource in enumerate(resources):
+#             gains[i, j] = random.uniform(1, 5)
+#     return gains
+#
+#
+# def compute_eavesdropper_gain(services, resources, gain_values_eavesdropper):
+#     gains_eavesdropper = np.zeros((len(services), len(resources)))
+#     for i, service in enumerate(services):
+#         for j, resource in enumerate(resources):
+#             gains_eavesdropper[i, j] = random.uniform(0.05, 0.5)  # same
+#     return gains_eavesdropper
 
 
 # funzione calcolo computation time in h
@@ -185,9 +185,9 @@ def compute_energy_sustainability(resource, computation_time, CI=475, PUE=1.67):
 
 
 # funzione calcolo KVI trustworthiness
-def compute_secrecy_capacity(service, channel_gain, eavesdropper_gain, resource):
-    return max(0, np.log2(1 + (service.p_s * channel_gain / resource.N0)) -
-               np.log2(1 + (service.p_s * eavesdropper_gain / resource.N0)))
+def compute_secrecy_capacity(service, gain_values, gain_values_eavesdropper, resource):
+    return max(0, np.log2(1 + (service.p_s * gain_values / resource.N0)) -
+               np.log2(1 + (service.p_s * gain_values_eavesdropper / resource.N0)))
 
 
 # funzione calcolo KVI inclusiveness
@@ -198,20 +198,20 @@ def compute_failure_probability(computation_time, resource):
     return failure_probability * computation_time
 
 
-def compute_normalized_kvi(services, resources, CI, signs):
+def compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, resources, CI, signs):
     # calcolo indicatori per ogni coppia (servizio, risorsa), normalizzo e faccio somma pesata per V(X) finale
 
     normalized_kvi = {}
     weighted_sum_kvi = {}
-    gains = compute_channel_gain_matrix(services, resources)
-    gains_eavesdroppers = compute_eavesdropper_gain(services, resources)
+    # gains = compute_channel_gain_matrix(services, resources)
+    # gains_eavesdroppers = compute_eavesdropper_gain(services, resources)
 
     for j, service in enumerate(services):
         kvi_values = []  # lista di future liste di lunghezza 3, vanno tutti i kvi garantiti per il servizio s
 
         # Calcolo degli indicatori per tutte le risorse
         for n, resource in enumerate(resources):
-            secrecy_capacity = compute_secrecy_capacity(service, gains[j, n], gains_eavesdroppers[j, n],
+            secrecy_capacity = compute_secrecy_capacity(service, gain_values[j, n], gain_values_eavesdropper[j, n],
                                                         resource)
             energy_sustainability = compute_energy_sustainability(resource, compute_computation_time(service, resource),
                                                                   CI)
