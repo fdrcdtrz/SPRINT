@@ -1,11 +1,12 @@
 from main import *
 from optimization import *
 from initialization import *
-import random
 import csv
 import random
 
-def greedy_assignment_kpi(services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500, max_assignments=10):
+
+def greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500,
+                          max_assignments=10):
     total_kpi_sum = 0
     total_kvi_sum = 0
 
@@ -17,37 +18,44 @@ def greedy_assignment_kpi(services, resources, weighted_sum_kpi, weighted_sum_kv
         # Mappa per tracciare quante volte ogni risorsa è stata assegnata
         resource_usage = {r.id: 0 for r in resources}
 
-        # Ordino i servizi
-        sorted_services = sorted(services, key=lambda s: -max(weighted_sum_kpi.get((r.id, s.id), 0) for r in resources))
+        # Ordino le richieste in base al miglior KPI ottenibile
+        sorted_requests = sorted(range(len(service_requests)),
+                                 key=lambda req_id: -max(
+                                     weighted_sum_kpi.get((r.id, service_requests[req_id]), 0) for r in resources))
 
-        for s in sorted_services:
+        for request_id in sorted_requests:
+            service_id = service_requests[request_id]
+            s = services[service_id]
+
             # Seleziona solo risorse con meno di max_assignments assegnazioni
             valid_resources = [r for r in resources if resource_usage[r.id] < max_assignments]
 
             if valid_resources:
-                # Trova la migliore tra quelle ancora disponibili
-                best_resource = max(valid_resources, key=lambda r: weighted_sum_kpi.get((r.id, s.id), 0))
+                best_resource = max(valid_resources, key=lambda r: weighted_sum_kpi.get((r.id, service_id), 0))
             else:
-                # Se tutte le risorse hanno raggiunto il limite, scegli una casuale
-                best_resource = random.choice(resources)
+                best_resource = None  # Nessuna risorsa valida trovata
 
-            # Assegna la risorsa e aggiorna il conteggio
-            assignment[s.id] = best_resource.id
-            resource_usage[best_resource.id] += 1
+            if best_resource:
+                assignment[request_id] = best_resource.id
+                resource_usage[best_resource.id] += 1
+            else:
+                print(
+                    f"Nessuna risorsa disponibile per la richiesta {request_id} (service_id: {service_id})")
 
             # Aggiorna i KPI totali
-            total_kpi += weighted_sum_kpi.get((best_resource.id, s.id), 0)
-            total_kvi += weighted_sum_kvi.get((best_resource.id, s.id), 0)
+            total_kpi += weighted_sum_kpi.get((best_resource.id, service_id), 0)
+            total_kvi += weighted_sum_kvi.get((best_resource.id, service_id), 0)
 
         total_kpi_sum += total_kpi
         total_kvi_sum += total_kvi
+        assignment = dict(sorted(assignment.items()))
 
-    # Restituisce la media dei KPI/KVI sui 50 tentativi
+    # Restituisce la media dei KPI/KVI sui num_seeds tentativi
     return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
 
 
-
-def random_assignment(services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=100):
+def random_assignment(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=100,
+                      max_assignments=10):
     total_kpi_sum = 0
     total_kvi_sum = 0
 
@@ -56,20 +64,35 @@ def random_assignment(services, resources, weighted_sum_kpi, weighted_sum_kvi, n
         total_kpi = 0
         total_kvi = 0
 
-        for s in services:
-            chosen_resource = random.choice(resources)
-            assignment[s.id] = chosen_resource.id
-            total_kpi += weighted_sum_kpi.get((chosen_resource.id, s.id), 0)
-            total_kvi += weighted_sum_kvi.get((chosen_resource.id, s.id), 0)
+        # Mappa per tracciare quante volte ogni risorsa è stata assegnata
+        resource_usage = {r.id: 0 for r in resources}
+
+        for request_id in range(len(service_requests)):
+            service_id = service_requests[request_id]
+            s = services[service_id]
+
+            # Seleziona solo risorse con meno di max_assignments assegnazioni
+            valid_resources = [r for r in resources if resource_usage[r.id] < max_assignments]
+
+            if valid_resources:
+                chosen_resource = random.choice(valid_resources)
+                assignment[request_id] = chosen_resource.id
+                resource_usage[chosen_resource.id] += 1
+            else:
+                print(
+                    f"Attenzione: nessuna risorsa disponibile per la richiesta {request_id} (service_id: {service_id})")
+
+            total_kpi += weighted_sum_kpi.get((chosen_resource.id, service_id), 0) if chosen_resource else 0
+            total_kvi += weighted_sum_kvi.get((chosen_resource.id, service_id), 0) if chosen_resource else 0
 
         total_kpi_sum += total_kpi
         total_kvi_sum += total_kvi
+        assignment = dict(sorted(assignment.items()))
 
     return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
 
 
-
-def save_assignment_results(assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
+def save_assignment_results(service_requests, assignment, services, resources, weighted_sum_kpi, weighted_sum_kvi, normalized_kpi,
                             normalized_kvi, total_kpi, total_kvi, results_dir, filename):
     # Crea la cartella se non esiste
     os.makedirs(results_dir, exist_ok=True)
@@ -81,7 +104,10 @@ def save_assignment_results(assignment, services, resources, weighted_sum_kpi, w
     print(f"Percorso completo del file: {filepath}")
 
     results = []
-    for s in services:
+
+    for request_id in range(len(service_requests)):
+        service_id = service_requests[request_id]  # ID del servizio associato alla richiesta
+        s = services[service_id]  # Oggetto Service corrispondente
         r_id = assignment.get(s.id, None)
         if r_id is not None:
             assigned = 1

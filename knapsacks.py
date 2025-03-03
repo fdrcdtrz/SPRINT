@@ -4,46 +4,46 @@ import pandas as pd
 
 
 # multi knapsack con dynamic programming. total value è valore funzione obiettivo del problema rilassato. quindi UB
-def multi_knapsack_dp(services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_, alpha=0.5):
+def multi_knapsack_dp(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_, alpha=0.5):
     N = len(resources)  # Numero di risorse (zaini)
-    J = len(services)  # Numero di servizi (oggetti)
+    J = len(service_requests)  # Numero di richieste (oggetti da allocare)
 
     # Capacità di ogni risorsa
     availabilities = np.array([r.availability for r in resources], dtype=int)
 
-    # Domanda di ogni servizio
-    demands = np.array([s.demand for s in services], dtype=int)
+    # Domanda di ogni richiesta (basata sul servizio corrispondente)
+    demands = np.array([services[service_requests[j]].demand for j in range(J)], dtype=int)
 
-    # Matrice dei valori dei servizi per ogni risorsa
+    # Matrice dei valori per ogni richiesta e risorsa
     values = np.zeros((J, N))
     for j in range(J):
+        service_id = service_requests[j]  # Otteniamo l'ID del servizio della richiesta j. uno dei quattro servizi
         for n in range(N):
-            kpi_value = weighted_sum_kpi.get((services[j].id, resources[n].id), 0)
-            kvi_value = weighted_sum_kvi.get((services[j].id, resources[n].id), 0)
+            kpi_value = weighted_sum_kpi.get((resources[n].id, service_id), 0)
+            kvi_value = weighted_sum_kvi.get((resources[n].id, service_id), 0)
             values[j, n] = (
-                    alpha * (kpi_value - services[j].min_kpi) + (1 - alpha) * (kvi_value - services[j].min_kvi) + lambda_[j]
+                    alpha * (kpi_value - services[service_id].min_kpi) +
+                    (1 - alpha) * (kvi_value - services[service_id].min_kvi) +
+                    lambda_[j]
             )
 
-    # Tabella DP: dp[j][n][w] registra il valore massimo con j servizi, n-esima risorsa e capacità w
+    # Tabella DP: dp[j][n][w] registra il valore massimo con j richieste, n-esima risorsa e capacità w
     dp = np.zeros((J + 1, N, max(availabilities) + 1))
 
-    # Traccia delle assegnazioni (servizio → risorsa), vettore lungo J di -1 (non assegnato)
-    item_assignment = [-1] * J  # avrò praticamente un vettore di J elementi. l'entry j-esima rappresenta il matching
-    # del servizio j-esimo. sono praticamente ordinate. se voglio usarlo in futuro sulla linea dell'ottimizzatore
-    # dovrò aggiungere id etc
+    # Traccia delle assegnazioni (request_id → risorsa), vettore lungo J di -1 (non assegnato)
+    item_assignment = [-1] * J
 
     # Costruzione tabella DP
     for j in range(1, J + 1):
         for n in range(N):
             for w in range(availabilities[n] + 1):
-                dp[j][n][w] = dp[j - 1][n][w]  # Non assegnare il servizio j
+                dp[j][n][w] = dp[j - 1][n][w]  # Non assegnare la richiesta j
 
-                # Caso: il servizio j è assegnato alla risorsa n (se c'è spazio)
+                # Caso: la richiesta j è assegnata alla risorsa n (se c'è spazio)
                 if demands[j - 1] <= w:
                     dp[j][n][w] = max(
                         dp[j][n][w],
                         dp[j - 1][n][w - demands[j - 1]] + values[j - 1, n]
-                        # servizio assegnato una sola volta. agg demand
                     )
 
     # Ricostruzione della soluzione
@@ -61,7 +61,7 @@ def multi_knapsack_dp(services, resources, weighted_sum_kpi, weighted_sum_kvi, l
             item_assignment[j - 1] = best_knapsack
             remaining_capacities[best_knapsack] -= demands[j - 1]
 
-    # Valore totale ottimale -> ma non è quello mio lagrangiano
+    # Valore totale ottimale
     total_value = sum(dp[J, n, availabilities[n]] for n in range(N))
 
     return total_value, item_assignment
@@ -96,21 +96,21 @@ def compute_total_value_lagrangian(services, resources, item_assignment, weighte
     return total_value
 
 
-def save_results_csv_lagrangian(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi, results_dir,
-                                filename):
-
+def save_results_csv_lagrangian(service_requests, services, resources, item_assignment, weighted_sum_kpi,
+                                weighted_sum_kvi, results_dir, filename):
     filepath = os.path.join(results_dir, filename)
     results = []
 
-    for j, assigned_r in enumerate(item_assignment):
+    for j, assigned_r in enumerate(item_assignment):  # Iteriamo sulle richieste
         if assigned_r != -1:
-            s = services[j]
-            r = resources[assigned_r]
+            service_id = service_requests[j]  # Troviamo l'ID del servizio associato alla richiesta j
+            s = services[service_id]  # Otteniamo l'oggetto Service corrispondente
+            r = resources[assigned_r]  # Risorsa assegnata
 
             results.append([
-                s.id, r.id, 1,
-                weighted_sum_kpi.get((s.id, r.id), 0),
-                weighted_sum_kvi.get((s.id, r.id), 0),
+                service_id, r.id, 1,  # 1 indica che è stato assegnato
+                weighted_sum_kpi.get((service_id, r.id), 0),
+                weighted_sum_kvi.get((service_id, r.id), 0),
                 s.min_kpi, s.min_kvi
             ])
 
@@ -130,25 +130,25 @@ def save_results_csv_lagrangian(services, resources, item_assignment, weighted_s
 #  quello con valore migliore. si controlla se sono stati rispettati vincoli minimi ed eventualmente si ri-assegna. si
 #  assegna un servizio che non è stato mai assegnato in modo analogo
 
-def repair_solution(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi, lambda_, alpha):
-
+def repair_solution(service_requests, services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi, lambda_,
+                    alpha):
     repaired_assignment = item_assignment.copy()
     remaining_capacities = {r.id: r.availability for r in resources}  # Capacità residue per risorsa
 
-    for j, assigned_r in enumerate(item_assignment):  # j è l'indice del servizio, assigned_r è la risorsa assegnata
-        s = services[j]
+    for j, assigned_r in enumerate(item_assignment):  # j è l'indice della richiesta, assigned_r è la risorsa assegnata
+        service_id = service_requests[j]  # Otteniamo l'ID del servizio della richiesta j
+        s = services[service_id]  # Otteniamo l'oggetto Service corrispondente
 
-        # Se il servizio è assegnato a una risorsa
+        # Se la richiesta non è assegnata
         if assigned_r == -1:
-
             best_resource = -1
             best_value = -float("inf")
 
-            # Ricerca risorsa migliore
+            # Ricerca della risorsa migliore
             for new_r in resources:
                 if remaining_capacities[new_r.id] >= s.demand:
-                    new_kpi = weighted_sum_kpi.get((s.id, new_r.id), 0)
-                    new_kvi = weighted_sum_kvi.get((s.id, new_r.id), 0)
+                    new_kpi = weighted_sum_kpi.get((new_r.id, service_id), 0)
+                    new_kvi = weighted_sum_kvi.get((new_r.id, service_id), 0)
 
                     total_value = (lambda_[j] - alpha * (new_kpi - s.min_kpi) +
                                    (1 - alpha) * ((new_kvi - s.min_kvi) / s.demand))
@@ -157,29 +157,28 @@ def repair_solution(services, resources, item_assignment, weighted_sum_kpi, weig
                         best_value = total_value
                         best_resource = new_r.id
 
-                # Se abbiamo trovato una nuova risorsa migliore, aggiorniamo l'assegnazione
-                if best_resource != -1:
-                    remaining_capacities[assigned_r] += s.demand  # Ripristiniamo la capacità
-                    remaining_capacities[best_resource] -= s.demand  # Aggiorniamo la nuova capacità
-                    repaired_assignment[j] = best_resource
-                else:
-                    # Se non esiste una risorsa valida, il servizio rimane non assegnato
-                    repaired_assignment[j] = -1
+            # Se abbiamo trovato una nuova risorsa, aggiorniamo l'assegnazione
+            if best_resource != -1:
+                remaining_capacities[best_resource] -= s.demand  # Aggiorniamo la capacità
+                repaired_assignment[j] = best_resource
+            else:
+                repaired_assignment[j] = -1  # La richiesta rimane non assegnata
 
     return repaired_assignment
 
 
 #  mi serve valore funzione obiettivo di partenza per lower bound
-
-def compute_total_value(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi, alpha=0.5):
+def compute_total_value(service_requests, services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
+                        alpha=0.5):
     total_value = 0
 
     for j, assigned_r in enumerate(item_assignment):
-        if assigned_r != -1:  # Se il servizio è assegnato
-            s = services[j]
+        if assigned_r != -1:  # Se la richiesta è assegnata
+            service_id = service_requests[j]
+            s = services[service_id]
             r = resources[assigned_r]
-            kpi_value = weighted_sum_kpi.get((s.id, r.id), 0)
-            kvi_value = weighted_sum_kvi.get((s.id, r.id), 0)
+            kpi_value = weighted_sum_kpi.get((r.id, service_id), 0)
+            kvi_value = weighted_sum_kvi.get((r.id, service_id), 0)
 
             # Valore totale per questa assegnazione
             service_value = alpha * (kpi_value - s.min_kpi) + (1 - alpha) * (kvi_value - s.min_kvi)
@@ -191,23 +190,20 @@ def compute_total_value(services, resources, item_assignment, weighted_sum_kpi, 
 #########
 
 
-def update_lagrangian_multipliers(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
+def update_lagrangian_multipliers(service_requests, services, resources, item_assignment, weighted_sum_kpi,
+                                  weighted_sum_kvi,
                                   lambda_, UB, LB, total_value_lagrangian, total_value_feasible, z=0.1):
     # Calcolo dei subgradienti
-    gamma_lambda = np.zeros(len(services))
-    # np.zeros((len(services), len(resources)))
-    # gamma_mu = np.zeros((len(services), len(resources)))
-    # gamma_nu = np.zeros(len(services))
+    gamma_lambda = np.zeros(len(service_requests))
 
     for j, assigned_r in enumerate(item_assignment):
-        if assigned_r != -1:  # Se il servizio è stato assegnato
-            s = services[j]
+        if assigned_r != -1:  # Se la richiesta è stata assegnata
+            service_id = service_requests[j]
+            s = services[service_id]
             r = resources[assigned_r]
 
-            # gamma_lambda[j, assigned_r] = s.min_kpi - weighted_sum_kpi.get((s.id, r.id), 0)
-            # gamma_mu[j, assigned_r] = s.min_kvi - weighted_sum_kvi.get((s.id, r.id), 0)
             gamma_lambda[j] = 1 - sum(
-                1 for _ in item_assignment if _ == assigned_r)  # Numero di assegnazioni sulla stessa risorsa
+                1 for _ in item_assignment if _ == assigned_r)  # Numero di assegnazioni alla stessa risorsa
 
     # Concatenazione dei subgradienti per la norma euclidea
     gamma = np.concatenate([gamma_lambda.flatten()])
@@ -222,26 +218,24 @@ def update_lagrangian_multipliers(services, resources, item_assignment, weighted
 
     # Aggiornamento dei moltiplicatori lagrangiani con proiezione a valori non negativi
     lambda_ = np.maximum(0, lambda_ + step_size * gamma_lambda)
-    # mu_ = np.maximum(0, mu_ + step_size * gamma_mu)
-    # nu_ = np.maximum(0, nu_ + step_size * gamma_nu)
 
     return lambda_, UB, LB
 
+
 ## check
 
-def is_feasible_solution(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi):
-
-    # Controllo che ogni servizio sia assegnato esattamente una volta
+def is_feasible_solution(service_requests, services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi):
+    # Controllo che ogni richiesta sia assegnata esattamente una volta
     if item_assignment.count(-1) != 0:
-        return False # Se ci sono servizi non assegnati, la soluzione non è feasible
-
+        return False  # Se ci sono richieste non assegnate, la soluzione non è feasible
 
     # Controllo che nessuna risorsa sia sovraccarica
     resource_load = {r.id: 0 for r in resources}
 
     for j, assigned_r in enumerate(item_assignment):
         if assigned_r != -1:
-            s = services[j]
+            service_id = service_requests[j]  # Otteniamo l'ID del servizio associato alla richiesta j
+            s = services[service_id]  # Otteniamo l'oggetto Service corrispondente
             resource_load[assigned_r] += s.demand
 
     for r in resources:
