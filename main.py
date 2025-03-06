@@ -16,7 +16,7 @@ class Service:
 
 
     def __init__(self, id, demand, min_kpi, min_kvi, kpi_service_req, kvi_service_req, kpi_service, kvi_service,
-                 weights_kpi, weights_kvi, flops, p_s):
+                 weights_kpi, weights_kvi, size, p_s):
         self.id = id
         self.demand = demand
         self.min_kpi = 0  # valore minimo globale tollerabile kpi
@@ -27,7 +27,7 @@ class Service:
         self.kvi_service = np.array(kvi_service)  # 3 KVI, valore desiderato
         self.weights_kpi = np.array(weights_kpi)  # per calcolo kpi globale
         self.weights_kvi = np.array(weights_kvi)  # per calcolo kvi globale
-        self.flops = flops
+        self.size = size
         self.p_s = p_s
 
     #property            # first decorate the getter method
@@ -61,8 +61,8 @@ class Service:
     def get_weights_kvi(self):  # This getter method name is *the* name
         return self.weights_kvi
 
-    def get_flops(self):  # This getter method name is *the* name
-        return self.flops
+    def get_size(self):  # This getter method name is *the* name
+        return self.size
 
     def get_p_s(self):  # This getter method name is *the* name
         return self.p_s
@@ -97,21 +97,28 @@ class Service:
     def set_weights_kvi(self, value):  # This setter method name is *the* name
         self.weights_kvi = value
 
-    def set_flops(self, value):  # This setter method name is *the* name
-        self.flops = value
+    def set_size(self, value):  # This setter method name is *the* name
+        self.size = value
 
     def set_p_s(self, value):  # This setter method name is *the* name
         self.p_s = value
 
+    def check_consistency(self):
+        if (self.kpi_service_req[0] > self.kpi_service[0] and
+                self.kpi_service_req[1] < self.kpi_service[1] and
+                self.kpi_service_req[2] > self.kpi_service[2]):
+            return True
+        return False
+
 
 
 class Resource:
-    def __init__(self, id, availability, kpi_resource, kvi_resource, n_c, P_c, u_c, n_m, P_m, speed, fcp, N0, lambda_failure, lambda_services_per_hour):
+    def __init__(self, id, availability, kpi_resource, kvi_resource, carbon_offset, P_c, u_c, n_m, P_m, speed, fcp, N0, lambda_failure, lambda_services_per_hour):
         self.id = id
         self.availability = availability
         self.kpi_resource = np.array(kpi_resource)
         self.kvi_resource = np.array(kvi_resource)
-        self.n_c = n_c
+        self.carbon_offset = carbon_offset
         self.P_c = P_c
         self.u_c = u_c
         self.n_m = n_m  # memory available GBytes
@@ -131,8 +138,8 @@ class Resource:
     def get_kvi_resource(self):  # This setter method name is *the* name
         return self.kvi_resource
 
-    def get_n_c(self):  # This setter method name is *the* name
-        return self.n_c
+    def get_carbon_offset(self):  # This setter method name is *the* name
+        return self.carbon_offset
 
     def get_P_c(self):  # This setter method name is *the* name
         return self.P_c
@@ -170,8 +177,8 @@ class Resource:
     def set_kvi_resource(self, value):  # This setter method name is *the* name
         self.kvi_resource = value
 
-    def set_n_c(self, value):  # This setter method name is *the* name
-        self.n_c = value
+    def set_carbon_offset(self, value):  # This setter method name is *the* name
+        self.carbon_offset = value
 
     def set_P_c(self, value):  # This setter method name is *the* name
         self.P_c = value
@@ -204,56 +211,84 @@ class Resource:
 if __name__ == '__main__':
 
     num_services_list = [5]
-    service_type = 8
+    num_services_type = 8
     delta = 0.1
     num_resources = 5
     weights_kpi = [1 / 3, 1 / 3, 1 / 3]
     weights_kvi = [1 / 3, 1 / 3, 1 / 3]
 
-    deadlines = np.random.uniform(0.01, 1, service_type*2)
-    data_rates = np.random.uniform(10, 250, service_type*2)
-    plr = np.random.uniform(1, 100, service_type*2)
-    env_sustainability = np.random.randint(900, 4000, service_type)
-    trust = np.random.randint(1, 20, service_type)
-    inclusiveness = np.random.uniform(0.1, service_type)
-    demand_values = np.random.randint(1, 4, service_type)
-    flops_values = np.random.randint(1000000, 100000000, service_type)
-    p_s_values = np.random.randint(1, 6, service_type)
+    deadlines = np.random.uniform(0.01, 1, num_services_type)
+    print(deadlines)
+    data_rates = np.random.uniform(10, 250, num_services_type)
+    plr = np.random.uniform(1, 100, num_services_type)
+    # env_sustainability = np.random.randint(900, 4000, num_services_type)
+    # trust = np.random.randint(1, 20, num_services_type)
+    # inclusiveness = np.random.uniform(0.1, num_services_type)
+    demand_values = np.random.randint(1, 4, num_services_type)
+    size_values_high = np.random.randint(1e6, 2e6, num_services_type)  #  Mb o varie
+    size_values_low = np.random.randint(1000, 10000, num_services_type)
+    p_s_values = np.random.randint(1, 6, num_services_type)
 
-    for j in range(service_type):
-        temp_service = Service()
-        temp_service.set_demand(demand_values[j])
+    services = []
+    for i in range(num_services_type):
+        service = Service(i, 0, 0, 0, 0, 0, 0,
+                          0, weights_kpi, weights_kvi, 0, 0)
+
+        while True:
+            kpi_service = [deadlines[i], data_rates[i], plr[i]]
+            kpi_service_req = [deadlines[i] * np.random.uniform(1.1, 1.3),
+                               data_rates[i] * np.random.uniform(0.7, 0.9),
+                               plr[i] * np.random.uniform(1.05, 1.15)]
+
+            service.set_kpi_service(kpi_service)
+            service.set_kpi_service_req(kpi_service_req)
+
+            if service.check_consistency():
+                break
+
+        service.set_demand(demand_values[i])
+        service.set_p_s(p_s_values[i])
+
+        service.set_size(size_values_high[i])
+
+        # Se la deadline è bassa, assegna flops alto
+        # if service.kpi_service_req[0] < 0.1 and service.kpi_service[0] < 0.1:
+        #     service.set_size(size_values_high[i])
+        # else:
+        #     service.set_size(size_values_low[i])
+
+        services.append(service)
+
+        print(f"Service id: {services[i].id}, {services[i].demand}, {services[i].min_kpi}, {services[i].min_kvi}, "
+              f"{services[i].kpi_service}, {services[i].kpi_service_req}, {services[i].kvi_service}, {services[i].kvi_service_req}, "
+              f"{services[i].size}, {services[i].p_s}")
 
 
-
-
-
-
-    services = [
-        Service(id=0, demand=2, min_kpi=0, min_kvi=0,
-                kpi_service_req=[0.8, 80, 40], kvi_service_req=[2000, 8, 0.4],
-                kpi_service=[0.6, 100, 30], kvi_service=[800, 10, 0.2],
-                weights_kpi=weights_kpi, weights_kvi=weights_kvi,
-                flops=2e6, p_s=2),
-
-        Service(id=1, demand=1, min_kpi=0, min_kvi=0,
-                kpi_service_req=[0.05, 70, 50], kvi_service_req=[900, 8, 0.3],
-                kpi_service=[0.02, 100, 40], kvi_service=[500, 15, 0.5],
-                weights_kpi=weights_kpi, weights_kvi=weights_kvi,
-                flops=2e6, p_s=3),
-
-        Service(id=2, demand=3, min_kpi=0, min_kvi=0,
-                kpi_service_req=[0.2, 180, 65], kvi_service_req=[1100, 4, 0.5],
-                kpi_service=[0.150, 250, 25], kvi_service=[900, 5, 0.2],
-                weights_kpi=weights_kpi, weights_kvi=weights_kvi,
-                flops=5e6, p_s=4),
-
-        Service(id=3, demand=2, min_kpi=0, min_kvi=0,
-                kpi_service_req=[0.08, 1000, 60], kvi_service_req=[1000, 6, 0.2],
-                kpi_service=[0.01, 250, 30], kvi_service=[900, 5, 0.2],
-                weights_kpi=weights_kpi, weights_kvi=weights_kvi,
-                flops=1e7, p_s=5)
-    ]
+    # services = [
+    #     Service(id=0, demand=2, min_kpi=0, min_kvi=0,
+    #             kpi_service_req=[0.8, 80, 40], kvi_service_req=[2000, 8, 0.4],
+    #             kpi_service=[0.6, 100, 30], kvi_service=[800, 10, 0.2],
+    #             weights_kpi=weights_kpi, weights_kvi=weights_kvi,
+    #             flops=2e6, p_s=2),
+    #
+    #     Service(id=1, demand=1, min_kpi=0, min_kvi=0,
+    #             kpi_service_req=[0.05, 70, 50], kvi_service_req=[900, 8, 0.3],
+    #             kpi_service=[0.02, 100, 40], kvi_service=[500, 15, 0.5],
+    #             weights_kpi=weights_kpi, weights_kvi=weights_kvi,
+    #             flops=2e6, p_s=3),
+    #
+    #     Service(id=2, demand=3, min_kpi=0, min_kvi=0,
+    #             kpi_service_req=[0.2, 180, 65], kvi_service_req=[1100, 4, 0.5],
+    #             kpi_service=[0.150, 250, 25], kvi_service=[900, 5, 0.2],
+    #             weights_kpi=weights_kpi, weights_kvi=weights_kvi,
+    #             flops=5e6, p_s=4),
+    #
+    #     Service(id=3, demand=2, min_kpi=0, min_kvi=0,
+    #             kpi_service_req=[0.08, 1000, 60], kvi_service_req=[1000, 6, 0.2],
+    #             kpi_service=[0.01, 250, 30], kvi_service=[900, 5, 0.2],
+    #             weights_kpi=weights_kpi, weights_kvi=weights_kvi,
+    #             flops=1e7, p_s=5)
+    # ]
 
     for num_services in num_services_list:
         results_dir = f"test_benchmark_{num_services}_200_{delta}_1"
@@ -262,8 +297,8 @@ if __name__ == '__main__':
         full_path = os.path.join(path_locale, results_dir)
         os.makedirs(full_path, exist_ok=True)
 
-        # Probabilità assegnate ai servizi (esempio: servizio 2 e 3 più richiesti)
-        probabilities = [0.1, 0.2, 0.4, 0.3]
+        # Probabilità assegnate ai servizi
+        probabilities = [0.1, 0.1, 0.2, 0.2, 0.1, 0.2, 0, 0.1]
 
         # Generazione delle richieste basate sulla distribuzione
         service_requests = np.random.choice(range(len(services)), size=num_services, p=probabilities)
@@ -282,21 +317,21 @@ if __name__ == '__main__':
         # p_s_values = np.random.randint(1, 6, num_services)
 
         availability_values = np.random.randint(5, 20, num_resources)
-        n_c_values = np.random.uniform(1, 4, num_resources)
+        carbon_offset_values = np.random.uniform(20, 50, num_resources)
         P_c_values = np.random.uniform(0.01, 0.04, num_resources)
         u_c_values = np.random.uniform(0.001, 1, num_resources)
         n_m_values = np.random.randint(2000000, 6000000, num_resources)
         P_m_values = np.random.uniform(0.01, 0.02, num_resources)
-        speed_values = np.random.uniform(50e6, 70e6, num_resources)  # Hz
-        fcp_values = np.random.randint(1000, 100000, num_resources)
+        speed_values = np.random.uniform(20e6, 50e6, num_resources)  # Hz
+        fcp_values = np.random.randint(2e9, 5e9, num_resources, dtype=np.int64)  # 2 - 5 Giga cicli
         N0 = 10e-10
-        lambda_failure_values = np.random.randint(1, 100, num_resources)
-        lambda_services_per_hour_values = np.random.randint(500, 600, num_resources)
+        lambda_failure_values = np.random.randint(1, 8760, num_resources)
+        lambda_services_per_hour_values = np.random.randint(1e3, 2e3, num_resources)
 
         # congiunti
 
         gain_values_eavesdropper = np.random.uniform(0.05, 0.5, num_resources * num_services)
-        gain_values = np.random.uniform(1, 5, num_resources * num_services)
+        gain_values = np.random.uniform(1, 6, num_resources * num_services)
 
         # Indicators offered by the resources
 
@@ -332,7 +367,7 @@ if __name__ == '__main__':
 
         resources = [Resource(n, availability=availability_values[n],
                               kpi_resource=[deadlines_off[n], data_rates_off[n], plr_off[n]], kvi_resource=[0, 0, 0],
-                              n_c=n_c_values[n], P_c=P_c_values[n], u_c=u_c_values[n],
+                              carbon_offset=carbon_offset_values[n], P_c=P_c_values[n], u_c=u_c_values[n],
                               n_m=n_m_values[n], P_m=P_m_values[n],
                               speed=speed_values[n], fcp=fcp_values[n], N0=N0,
                               lambda_failure=lambda_failure_values[n], lambda_services_per_hour=lambda_services_per_hour_values[n]) for n in range(num_resources)]
@@ -350,7 +385,7 @@ if __name__ == '__main__':
         for service in services:
             for resource in resources:
                 computation_time = compute_computation_time(service, resource)
-                # print(computation_time)
+                print(computation_time)
 
         # TIS
         normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, resources, CI=475, signs=[1, -1,

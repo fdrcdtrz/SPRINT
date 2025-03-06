@@ -176,12 +176,12 @@ def compute_eavesdropper_gain(services, resources, gain_values_eavesdropper):
 
 # funzione calcolo computation time in h
 def compute_computation_time(service, resource):
-    return (service.flops / (resource.availability * resource.speed * resource.fpc)) / 3600  # per passare da secondi a ore
+    return service.size * 1000 / (resource.availability * resource.fpc)  # / 3600  # per passare da secondi a ore
 
 
 # funzione calcolo KVI sostenibilità ambientale
 def compute_energy_sustainability(resource, computation_time, CI=475, PUE=1.67):
-    return computation_time * resource.lambda_services_per_hour * (
+    return resource.carbon_offset - computation_time * resource.lambda_services_per_hour * (
             resource.availability * resource.P_c * resource.u_c + resource.n_m * resource.P_m) * PUE * CI
 
 
@@ -194,9 +194,9 @@ def compute_secrecy_capacity(service, gain_values, gain_values_eavesdropper, res
 # funzione calcolo KVI inclusiveness
 def compute_failure_probability(computation_time, resource):
     #print(f"Computation Time: {computation_time}, Lambda: {resource.lmbd}, Availability: {resource.availability}")
-    exponent = - 6 / resource.lambda_failure
-    failure_probability = 1 - (1 - np.exp(exponent)) ** resource.availability
-    return (failure_probability * computation_time * resource.lambda_services_per_hour) / 6
+    exponent = - 24 / resource.lambda_failure
+    failure_probability = (1 - np.exp(exponent)) ** resource.availability
+    return (failure_probability * computation_time * resource.lambda_services_per_hour) / 24
 
 
 def compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, resources, CI, signs):
@@ -221,22 +221,24 @@ def compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, reso
             print(f"For ({service.id}, {resource.id}: secrecy capacity di {secrecy_capacity} bits/s/Hz, energy "
                   f"sustainability di {energy_sustainability} in gCO2e, inclusiveness di {failure_probability}")
 
-            print(secrecy_capacity, energy_sustainability, failure_probability)
-
-            kvi_values.append([secrecy_capacity, failure_probability, energy_sustainability])
-            resource.kvi_resource = [secrecy_capacity, failure_probability, energy_sustainability]
+            temp_kvi = [secrecy_capacity, failure_probability, energy_sustainability]
+            kvi_values.append(temp_kvi)
+            # v_x = np.dot(service.weights_kvi, temp_kvi)
+            # weighted_sum_kvi[(resource.id, service.id)] = float(v_x)
+            # resource.kvi_resource = [secrecy_capacity, failure_probability, energy_sustainability]
     kvi_values = MinMaxScaler().fit_transform(kvi_values)
 
     # Normalizzazione
     for j, service in enumerate(services):
         for n, resource in enumerate(resources):
-            norm_kvi = kvi_values[j+n]
-            # norm_kvi = normalize_single_row(service.kvi_service, service.kvi_service_req, resources, n, signs,
-            #                                 kvi_values)
-            # normalized_kvi[(resource.id, service.id)] = norm_kvi
-
-            # Somma pesata con i pesi del servizio
-            v_x = np.dot(service.weights_kvi, norm_kvi)
+    #         norm_kvi = kvi_values[j+n]
+    #         # norm_kvi = normalize_single_row(service.kvi_service, service.kvi_service_req, resources, n, signs,
+    #         #                                 kvi_values)
+    #         # normalized_kvi[(resource.id, service.id)] = norm_kvi
+    #
+    #         # Somma pesata con i pesi del servizio
+            v_x = np.dot(service.weights_kvi, kvi_values[j+n])
+            #print(v_x)
             weighted_sum_kvi[(resource.id, service.id)] = float(v_x)
 
     return normalized_kvi, weighted_sum_kvi
@@ -319,7 +321,7 @@ def q_v_big_req(services, signs_kpi, signs_kvi):
 
     for service in services:
         temp_kpi = np.zeros(len(service.kpi_service_req))
-        temp_kvi = np.zeros(len(service.kvi_service_req))
+        #temp_kvi = np.zeros(len(service.kvi_service_req))
 
         for index, requested in enumerate(service.kpi_service_req):
             if max_kpi_req[index] > min_kpi_req[index]:  # Evita divisioni per zero

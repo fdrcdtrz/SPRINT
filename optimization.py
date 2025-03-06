@@ -21,17 +21,17 @@ def save_results_csv(service_requests, services, resources, x, normalized_kpi, n
             assigned = round(x[request_id, r.id].x)  # 1 se assegnato, 0 altrimenti
             if assigned == 1:  # Salviamo solo assegnazioni valide
                 list_s_kpi_service = [float(kpi) for kpi in s.kpi_service]
-                list_s_kvi_service = [float(kvi) for kvi in s.kvi_service]
+                list_s_kvi_service = []
                 list_r_kpi_resource = [float(kpi) for kpi in r.kpi_resource]
-                list_r_kvi_resource = [float(kvi) for kvi in r.kvi_resource]
+                list_r_kvi_resource = []
 
                 results.append([
                     request_id, service_id, r.id, assigned,
                     normalized_kpi.get((r.id, service_id), 0),
-                    normalized_kvi.get((r.id, service_id), 0),
+                    0,
                     weighted_sum_kpi.get((r.id, service_id), 0),
                     weighted_sum_kvi.get((r.id, service_id), 0),
-                    s.min_kpi, s.min_kvi,
+                    s.min_kpi, 0,
                     list_s_kpi_service, list_s_kvi_service,
                     list_r_kpi_resource, list_r_kvi_resource
                 ])
@@ -63,17 +63,17 @@ def save_epsilon_constraint(service_requests, services, resources, x, normalized
             assigned = round(x[request_id, r.id].x)  # 1 se assegnato, 0 altrimenti
             if assigned == 1:  # Salviamo solo assegnazioni valide
                 list_s_kpi_service = [float(kpi) for kpi in s.kpi_service]
-                list_s_kvi_service = [float(kvi) for kvi in s.kvi_service]
+                list_s_kvi_service = []
                 list_r_kpi_resource = [float(kpi) for kpi in r.kpi_resource]
-                list_r_kvi_resource = [float(kvi) for kvi in r.kvi_resource]
+                list_r_kvi_resource = []
 
                 results.append([
                     request_id, service_id, r.id, assigned,
                     normalized_kpi.get((r.id, service_id), 0),
-                    normalized_kvi.get((r.id, service_id), 0),
+                    0,
                     weighted_sum_kpi.get((r.id, service_id), 0),
                     weighted_sum_kvi.get((r.id, service_id), 0),
-                    s.min_kpi, s.min_kvi,
+                    s.min_kpi, 0,
                     list_s_kpi_service, list_s_kvi_service,
                     list_r_kpi_resource, list_r_kvi_resource
                 ])
