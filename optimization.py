@@ -8,9 +8,6 @@ import os
 
 
 # script per definizione funzione di salvataggio risultati, problema di ottimizzazione per calcolo di Q^I, V^I, Q^N, V^N
-import os
-import csv
-import pandas as pd
 
 def save_results_csv(service_requests, services, resources, x, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
                      results_dir, filename):
@@ -145,7 +142,7 @@ def optimize_kpi(service_requests, services, resources, normalized_kpi, normaliz
 
         for r in resources:
             model.addConstr(
-                (weighted_sum_kvi[(r.id, service_id)] - s.min_kvi) * x[request_id, r.id] >= 0,
+                weighted_sum_kvi[(r.id, service_id)] * x[request_id, r.id] >= 0,
                 f"kpi_threshold_{request_id}_{r.id}"
             )
 
@@ -229,7 +226,7 @@ def optimize_kvi(service_requests, services, resources, normalized_kpi, normaliz
 
         for r in resources:
             model.addConstr(
-                (weighted_sum_kvi[(r.id, service_id)] - s.min_kvi) * x[request_id, r.id] >= 0,
+                (weighted_sum_kvi[(r.id, service_id)]) * x[request_id, r.id] >= 0,
                 f"kpi_threshold_{request_id}_{r.id}"
             )
 
@@ -320,7 +317,7 @@ def q_nadir(service_requests, services, resources, normalized_kpi, normalized_kv
 
         for r in resources:
             model.addConstr(
-                (weighted_sum_kvi[(r.id, service_id)] - s.min_kvi) * x[request_id, r.id] >= 0,
+                weighted_sum_kvi[(r.id, service_id)] * x[request_id, r.id] >= 0,
                 f"kpi_threshold_{request_id}_{r.id}"
             )
 
@@ -413,7 +410,7 @@ def v_nadir(service_requests, services, resources, normalized_kpi, normalized_kv
 
         for r in resources:
             model.addConstr(
-                (weighted_sum_kvi[(r.id, service_id)] - s.min_kvi) * x[request_id, r.id] >= 0,
+                weighted_sum_kvi[(r.id, service_id)] * x[request_id, r.id] >= 0,
                 f"kpi_threshold_{request_id}_{r.id}"
             )
 
@@ -515,7 +512,7 @@ def epsilon_constraint_exact(service_requests, services, resources, normalized_k
 
             for r in resources:
                 model.addConstr(
-                    (weighted_sum_kvi[(r.id, service_id)] - s.min_kvi) * x[request_id, r.id] >= 0,
+                    weighted_sum_kvi[(r.id, service_id)] * x[request_id, r.id] >= 0,
                     f"kpi_threshold_{request_id}_{r.id}"
                 )
 

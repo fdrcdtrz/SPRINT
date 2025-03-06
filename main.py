@@ -105,10 +105,8 @@ class Service:
 
 
 
-
-
 class Resource:
-    def __init__(self, id, availability, kpi_resource, kvi_resource, n_c, P_c, u_c, n_m, P_m, speed, fcp, N0, lmbd):
+    def __init__(self, id, availability, kpi_resource, kvi_resource, n_c, P_c, u_c, n_m, P_m, speed, fcp, N0, lambda_failure, lambda_services_per_hour):
         self.id = id
         self.availability = availability
         self.kpi_resource = np.array(kpi_resource)
@@ -121,19 +119,116 @@ class Resource:
         self.speed = speed
         self.fpc = fcp
         self.N0 = N0
-        self.lmbd = lmbd
+        self.lambda_failure = lambda_failure
+        self.lambda_services_per_hour = lambda_services_per_hour
 
-    def __getitem__(self, key):
-        return getattr(self, key, None)  # Restituisce l'attributo se esiste, altrimenti None
+    def get_availability(self):  # This setter method name is *the* name
+        return self.availability
+
+    def get_kpi_resource(self):  # This setter method name is *the* name
+        return self.kpi_resource
+
+    def get_kvi_resource(self):  # This setter method name is *the* name
+        return self.kvi_resource
+
+    def get_n_c(self):  # This setter method name is *the* name
+        return self.n_c
+
+    def get_P_c(self):  # This setter method name is *the* name
+        return self.P_c
+
+    def get_u_c(self):  # This setter method name is *the* name
+        return self.u_c
+
+    def get_n_m(self):  # This setter method name is *the* name
+        return self.n_m
+
+    def get_P_m(self):  # This setter method name is *the* name
+        return self.P_m
+
+    def get_speed(self):  # This setter method name is *the* name
+        return self.speed
+
+    def get_fpc(self):  # This setter method name is *the* name
+        return self.fpc
+
+    def get_N0(self):  # This setter method name is *the* name
+        return self.N0
+
+    def get_lambda_failure(self):  # This setter method name is *the* name
+        return self.lambda_failure
+
+    def get_lambda_services_per_hour(self):  # This setter method name is *the* name
+        return self.lambda_services_per_hour
+
+    def set_availability(self, value):  # This setter method name is *the* name
+        self.availability = value
+
+    def set_kpi_resource(self, value):  # This setter method name is *the* name
+        self.kpi_resource = value
+
+    def set_kvi_resource(self, value):  # This setter method name is *the* name
+        self.kvi_resource = value
+
+    def set_n_c(self, value):  # This setter method name is *the* name
+        self.n_c = value
+
+    def set_P_c(self, value):  # This setter method name is *the* name
+        self.P_c = value
+
+    def set_u_c(self, value):  # This setter method name is *the* name
+        self.u_c = value
+
+    def set_n_m(self, value):  # This setter method name is *the* name
+        self.n_m = value
+
+    def set_P_m(self, value):  # This setter method name is *the* name
+        self.P_m = value
+
+    def set_speed(self, value):  # This setter method name is *the* name
+        self.speed = value
+
+    def set_fpc(self, value):  # This setter method name is *the* name
+        self.fpc = value
+
+    def set_N0(self, value):  # This setter method name is *the* name
+        self.N0 = value
+
+    def set_lambda_failure(self, value):  # This setter method name is *the* name
+        self.lambda_failure = value
+
+    def set_lambda_services_per_hour(self, value):  # This setter method name is *the* name
+        self.lambda_services_per_hour = value
 
 
 if __name__ == '__main__':
 
     num_services_list = [5]
+    service_type = 8
     delta = 0.1
     num_resources = 5
     weights_kpi = [1 / 3, 1 / 3, 1 / 3]
     weights_kvi = [1 / 3, 1 / 3, 1 / 3]
+
+    deadlines = np.random.uniform(0.01, 1, service_type*2)
+    data_rates = np.random.uniform(10, 250, service_type*2)
+    plr = np.random.uniform(1, 100, service_type*2)
+    env_sustainability = np.random.randint(900, 4000, service_type)
+    trust = np.random.randint(1, 20, service_type)
+    inclusiveness = np.random.uniform(0.1, service_type)
+    demand_values = np.random.randint(1, 4, service_type)
+    flops_values = np.random.randint(1000000, 100000000, service_type)
+    p_s_values = np.random.randint(1, 6, service_type)
+
+    for j in range(service_type):
+        temp_service = Service()
+        temp_service.set_demand(demand_values[j])
+
+
+
+
+
+
     services = [
         Service(id=0, demand=2, min_kpi=0, min_kvi=0,
                 kpi_service_req=[0.8, 80, 40], kvi_service_req=[2000, 8, 0.4],
@@ -192,10 +287,11 @@ if __name__ == '__main__':
         u_c_values = np.random.uniform(0.001, 1, num_resources)
         n_m_values = np.random.randint(2000000, 6000000, num_resources)
         P_m_values = np.random.uniform(0.01, 0.02, num_resources)
-        speed_values = np.random.uniform(50e9, 150e9, num_resources)  # Hz
-        fcp_values = np.random.randint(1000, 1000000, num_resources)
+        speed_values = np.random.uniform(50e6, 70e6, num_resources)  # Hz
+        fcp_values = np.random.randint(1000, 100000, num_resources)
         N0 = 10e-10
-        lmbd_values = np.random.randint(1, 100, num_resources)
+        lambda_failure_values = np.random.randint(1, 100, num_resources)
+        lambda_services_per_hour_values = np.random.randint(500, 600, num_resources)
 
         # congiunti
 
@@ -206,7 +302,7 @@ if __name__ == '__main__':
 
         deadlines_off = np.random.uniform(0.01, 1, num_resources)
         data_rates_off = np.random.uniform(10, 350, num_resources)
-        plr_off = np.random.uniform(1, 100, num_resources)
+        plr_off = np.random.uniform(50, 200, num_resources)
 
         # KPI servizio
 
@@ -217,6 +313,9 @@ if __name__ == '__main__':
         #     env_sustainability = np.random.randint(900, 4000, 2)
         #     trust = np.random.randint(1, 20, 2)
         #     inclusiveness = np.random.uniform(0.1, 1)
+    #       demand_values = np.random.randint(1, 4, num_services)
+        #   flops_values = np.random.randint(1000000, 100000000, num_services)
+        #   p_s_values = np.random.randint(1, 6, num_services)
         #
         #     services.append(Service(
         #         j, demand=demand_values[j], min_kpi=min_kpi, min_kvi=min_kvi,
@@ -236,15 +335,15 @@ if __name__ == '__main__':
                               n_c=n_c_values[n], P_c=P_c_values[n], u_c=u_c_values[n],
                               n_m=n_m_values[n], P_m=P_m_values[n],
                               speed=speed_values[n], fcp=fcp_values[n], N0=N0,
-                              lmbd=lmbd_values[n]) for n in range(num_resources)]
+                              lambda_failure=lambda_failure_values[n], lambda_services_per_hour=lambda_services_per_hour_values[n]) for n in range(num_resources)]
 
         # for resource in resources:
         #     print(resource.id, resource.availability, resource.kpi_resource, resource.n_c, resource.n_m, resource.fpc,
-        #           resource.P_m, resource.P_c, resource.speed, resource.lmbd)
+        #           resource.P_m, resource.P_c, resource.speed, resource.lambda_services_per_hour)
 
         # test: da cambiare ogni normalized_kpi con weighted_sum_kpi e stessa cosa per kvi
 
-        q_v_big_req(services, [-1, 1, -1], [1, -1, -1])
+        q_v_big_req(services, [-1, 1, -1], [1, -1, -1])  # qui dentro set
         # for s in services:
         #     print(f"min q rec total {s.min_kpi}, min v rec total {s.min_kvi}")
 
@@ -333,76 +432,81 @@ if __name__ == '__main__':
         z = 0.5  # Parametro per lo step size
 
         # Inizializzazione dei moltiplicatori lagrangiani
-        lambda_ = np.ones(len(service_requests)) * 0.1
-
-        # Inizializzazione dei bound
-        UB = float("inf")  # Upper Bound iniziale
-        LB = float("-inf")  # Lower Bound iniziale
+        # lambda_ = np.ones(len(service_requests)) * 0.1
+        #
+        # # Inizializzazione dei bound
+        # UB = float("inf")  # Upper Bound iniziale
+        # LB = float("-inf")  # Lower Bound iniziale
 
         # Loop iterativo per il metodo subgradiente
-        for k in range(max_iterations):
-            # Zaini
-            total_value_not_lagrangian, item_assignment = multi_knapsack_dp(
-                service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_
-            )
+        for alpha in [i / 10 for i in range(11)]:
+            lambda_ = np.ones(len(service_requests)) * 0.1
+            UB = float("inf")  # Upper Bound iniziale
+            LB = float("-inf")  # Lower Bound iniziale
 
-            #  Total value lagrangian
-            total_value_lagrangian = compute_total_value_lagrangian(services, resources,
-                                                                    item_assignment,
-                                                                    weighted_sum_kpi, weighted_sum_kvi,
-                                                                    lambda_, total_value_not_lagrangian, alpha=0.5)
+            for k in range(max_iterations):
+                # Zaini
+                total_value_not_lagrangian, item_assignment = multi_knapsack_dp(
+                    service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_, alpha
+                )
 
-            print("Valore totale lagrangiano:", total_value_not_lagrangian)
-            print("Valore totale lagrangiano corretto:", total_value_lagrangian)
-            print("Assegnazione lagrangiana:", item_assignment)
+                #  Total value lagrangian
+                total_value_lagrangian = compute_total_value_lagrangian(services, resources,
+                                                                        item_assignment,
+                                                                        weighted_sum_kpi, weighted_sum_kvi,
+                                                                        lambda_, total_value_not_lagrangian, alpha)
 
-            if is_feasible_solution(service_requests, services, resources, item_assignment, weighted_sum_kpi,
-                                    weighted_sum_kvi):
-                print(f"Soluzione feasible trovata all'iterazione {k + 1}, interrompo l'ottimizzazione.")
+                print("Valore totale lagrangiano:", total_value_not_lagrangian)
+                print("Valore totale lagrangiano corretto:", total_value_lagrangian)
+                print("Assegnazione lagrangiana:", item_assignment)
+
+                if is_feasible_solution(service_requests, services, resources, item_assignment, weighted_sum_kpi,
+                                        weighted_sum_kvi):
+                    print(f"Soluzione feasible trovata all'iterazione {k + 1}, interrompo l'ottimizzazione.")
+                    save_results_csv_lagrangian(service_requests,
+                                                services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
+                                                results_dir=results_dir, filename=f"iteration_{k + 1}.csv"
+                                                )
+                    break
+
+                # Riparazione
+                item_assignment_repaired = repair_solution(service_requests,
+                                                           services, resources, item_assignment, weighted_sum_kpi,
+                                                           weighted_sum_kvi, lambda_, alpha
+                                                           )
+
+                # Valore f. obiettivo con soluzione feasible (riparata)
+                total_value_feasible = compute_total_value(service_requests,
+                                                           services, resources, item_assignment_repaired, weighted_sum_kpi,
+                                                           weighted_sum_kvi, alpha
+                                                           )
+
+                print("Valore totale riparato:", total_value_feasible)
+                print("Assegnazione riparata:", item_assignment_repaired)
+
+                # Aggiorna i moltiplicatori di Lagrange, lo step size, UB e LB
+                lambda_, UB, LB = update_lagrangian_multipliers(service_requests,
+                                                                services, resources, item_assignment_repaired,
+                                                                weighted_sum_kpi, weighted_sum_kvi,
+                                                                lambda_, UB, LB, total_value_lagrangian,
+                                                                total_value_feasible, z
+                                                                )
+
                 save_results_csv_lagrangian(service_requests,
-                                            services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
-                                            results_dir=results_dir, filename=f"iteration_{k + 1}.csv"
+                                            services, resources, item_assignment_repaired, weighted_sum_kpi,
+                                            weighted_sum_kvi,
+                                            results_dir=results_dir, filename=f"alpha_{alpha}_iteration_{k + 1}.csv"
                                             )
-                break
 
-            # Riparazione
-            item_assignment_repaired = repair_solution(service_requests,
-                                                       services, resources, item_assignment, weighted_sum_kpi,
-                                                       weighted_sum_kvi, min_kpi, min_kvi
-                                                       )
+                # Convergenza
+                gap = (UB - LB) / max(1, abs(LB))
+                print(f"Iterazione {k + 1}: UB = {UB:.4f}, LB = {LB:.4f}, Gap = {gap:.6f}")
 
-            # Valore f. obiettivo con soluzione feasible (riparata)
-            total_value_feasible = compute_total_value(service_requests,
-                                                       services, resources, item_assignment_repaired, weighted_sum_kpi,
-                                                       weighted_sum_kvi
-                                                       )
+                if gap < tolerance:
+                    print("The covergence was reached.")
+                    break
 
-            print("Valore totale riparato:", total_value_feasible)
-            print("Assegnazione riparata:", item_assignment_repaired)
-
-            # Aggiorna i moltiplicatori di Lagrange, lo step size, UB e LB
-            lambda_, UB, LB = update_lagrangian_multipliers(service_requests,
-                                                            services, resources, item_assignment_repaired,
-                                                            weighted_sum_kpi, weighted_sum_kvi,
-                                                            lambda_, UB, LB, total_value_lagrangian,
-                                                            total_value_feasible, z
-                                                            )
-
-            save_results_csv_lagrangian(service_requests,
-                                        services, resources, item_assignment_repaired, weighted_sum_kpi,
-                                        weighted_sum_kvi,
-                                        results_dir=results_dir, filename=f"iteration_{k + 1}.csv"
-                                        )
-
-            # Convergenza
-            gap = (UB - LB) / max(1, abs(LB))
-            print(f"Iterazione {k + 1}: UB = {UB:.4f}, LB = {LB:.4f}, Gap = {gap:.6f}")
-
-            if gap < tolerance:
-                print("The covergence was reached.")
-                break
-
-            print(f"Valore finale UB: {UB}, LB: {LB}")
+                print(f"Valore finale UB: {UB}, LB: {LB}")
 
         # Tempo di esecuzione
         end_time = time.time()

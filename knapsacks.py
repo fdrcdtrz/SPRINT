@@ -4,7 +4,7 @@ import pandas as pd
 
 
 # multi knapsack con dynamic programming. total value è valore funzione obiettivo del problema rilassato. quindi UB
-def multi_knapsack_dp(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_, alpha=0.5):
+def multi_knapsack_dp(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_, alpha):
     N = len(resources)  # Numero di risorse (zaini)
     J = len(service_requests)  # Numero di richieste (oggetti da allocare)
 
@@ -23,7 +23,7 @@ def multi_knapsack_dp(service_requests, services, resources, weighted_sum_kpi, w
             kvi_value = weighted_sum_kvi.get((resources[n].id, service_id), 0)
             values[j, n] = (
                     alpha * (kpi_value - services[service_id].min_kpi) +
-                    (1 - alpha) * (kvi_value - services[service_id].min_kvi) +
+                    (1 - alpha) * (kvi_value) +
                     lambda_[j]
             )
 
@@ -151,7 +151,7 @@ def repair_solution(service_requests, services, resources, item_assignment, weig
                     new_kvi = weighted_sum_kvi.get((new_r.id, service_id), 0)
 
                     total_value = (lambda_[j] - alpha * (new_kpi - s.min_kpi) +
-                                   (1 - alpha) * ((new_kvi - s.min_kvi) / s.demand))
+                                   (1 - alpha) * new_kvi)
 
                     if total_value > best_value:
                         best_value = total_value
@@ -169,7 +169,7 @@ def repair_solution(service_requests, services, resources, item_assignment, weig
 
 #  mi serve valore funzione obiettivo di partenza per lower bound
 def compute_total_value(service_requests, services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
-                        alpha=0.5):
+                        alpha):
     total_value = 0
 
     for j, assigned_r in enumerate(item_assignment):
@@ -181,7 +181,7 @@ def compute_total_value(service_requests, services, resources, item_assignment, 
             kvi_value = weighted_sum_kvi.get((r.id, service_id), 0)
 
             # Valore totale per questa assegnazione
-            service_value = alpha * (kpi_value - s.min_kpi) + (1 - alpha) * (kvi_value - s.min_kvi)
+            service_value = alpha * (kpi_value - s.min_kpi) + (1 - alpha) * kvi_value
             total_value += service_value  # Somma al valore totale
 
     return total_value
