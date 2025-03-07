@@ -16,22 +16,23 @@ def greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kp
         total_kvi = 0
 
         # Mappa per tracciare quante volte ogni risorsa è stata assegnata
-        resource_usage = {r.id: 0 for r in resources}
+        resource_usage = {n: 0 for n, r in enumerate(resources)}
 
         # Ordino le richieste in base al miglior KPI ottenibile
         sorted_requests = sorted(range(len(service_requests)),
                                  key=lambda req_id: -max(
-                                     weighted_sum_kpi.get((r.id, service_requests[req_id]), 0) for r in resources))
+                                     weighted_sum_kpi.get((n, service_requests[req_id]), 0) for n, r in enumerate(resources)))
 
         for request_id in sorted_requests:
             service_id = service_requests[request_id]
             s = services[service_id]
 
             # Seleziona solo risorse con meno di max_assignments assegnazioni
-            valid_resources = [r for r in resources if resource_usage[r.id] < max_assignments]
+            valid_resources = [r for n, r in enumerate(resources) if resource_usage[n] < max_assignments]
 
             if valid_resources:
-                best_resource = max(valid_resources, key=lambda r: weighted_sum_kpi.get((r.id, service_id), 0))
+                best_resource = max(valid_resources,
+                                    key=lambda r: weighted_sum_kpi.get((resources.index(r), service_id), 0))
             else:
                 best_resource = None  # Nessuna risorsa valida trovata
 
