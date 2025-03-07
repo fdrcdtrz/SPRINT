@@ -23,14 +23,14 @@ def multi_knapsack_dp(service_requests, services, resources, weighted_sum_kpi, w
             kvi_value = weighted_sum_kvi.get((resources[n].id, service_id), 0)
             values[j, n] = (
                     alpha * (kpi_value - services[service_id].min_kpi) +
-                    (1 - alpha) * (kvi_value) +
+                    (1 - alpha) * kvi_value +
                     lambda_[j]
             )
 
     # Tabella DP: dp[j][n][w] registra il valore massimo con j richieste, n-esima risorsa e capacità w
     dp = np.zeros((J + 1, N, max(availabilities) + 1))
 
-    # Traccia delle assegnazioni (request_id → risorsa), vettore lungo J di -1 (non assegnato)
+    # Traccia delle assegnazioni (request_id → risorsa), vettore lungo J di soli -1 (non assegnato)
     item_assignment = [-1] * J
 
     # Costruzione tabella DP
@@ -69,23 +69,6 @@ def multi_knapsack_dp(service_requests, services, resources, weighted_sum_kpi, w
 
 def compute_total_value_lagrangian(services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi,
                                    lambda_, total_value, alpha=0.5):
-    # penalty_kpi = 0
-    # penalty_kvi = 0
-
-    # for j, assigned_r in enumerate(item_assignment):
-    #     if assigned_r != -1:  # Se il servizio è assegnato
-    #         s = services[j]
-    #         r = resources[assigned_r]
-    #         kpi_value = weighted_sum_kpi.get((s.id, r.id), 0)
-    #         kvi_value = weighted_sum_kvi.get((s.id, r.id), 0)
-    #
-    #         # Valore della funzione obiettivo con KPI e KVI
-    #         service_value = alpha * kpi_value + (1 - alpha) * kvi_value
-    #         total_value_lagrangian += service_value
-    #
-    #         # Penalizzazioni per KPI e KVI violati
-    #         penalty_kpi += lambda_[j, assigned_r] * (s.min_kpi - kpi_value)
-    #         penalty_kvi += mu_[j, assigned_r] * (s.min_kvi - kvi_value)
 
     # Penalizzazione vincolo di assegnazione, quindi la sommatoria finale
     penalty_lambda = np.sum(lambda_)

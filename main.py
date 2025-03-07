@@ -211,7 +211,7 @@ if __name__ == '__main__':
     plrs_req = [35.0, 45.0, 45.0, 50.0]
     data_rates = [70.0, 100.0, 100.0, 250.0]
     data_rates_req = [60.0, 45.0, 90.0, 95.0]
-    sizes = [250e6, 300e6, 600e6, 600e6]  # Mb
+    sizes = [250e3, 300e3, 600e6, 600e6]  # Mb
     p_s_values = [2, 2, 3, 4]
     demand_values = [2, 4, 10, 20]
 
@@ -274,10 +274,10 @@ if __name__ == '__main__':
         carbon_offset_values = [500000, 700000, 800000, 900000]
         P_c_values = [0.01, 0.02, 0.04, 0.04]
         u_c_values = [0.1, 0.4, 0.8, 1]
-        n_m_values = [2000000, 2000000, 3000000, 6000000]
+        n_m_values = [20, 20, 30, 60]
         P_m_values = [0.01, 0.01, 0.015, 0.2]
         speed_values = [20e6, 30e6, 40e6, 60e6]  # Hz
-        fcp_values = [3e9, 5e9, 15e9, 15e9]  # 2 - 5 Giga cicli
+        fcp_values = [4e9, 7e9, 15e9, 15e9]  # 2 - 5 Giga cicli
         N0 = 10e-10
         lambda_failure_values = [4760, 8760, 8760, 9000]
         lambda_services_per_hour_values = [2e3, 2e3, 2e3, 3e3]

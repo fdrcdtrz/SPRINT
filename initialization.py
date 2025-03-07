@@ -1,8 +1,5 @@
-from main import *
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-import random
-import csv
 
 
 def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, signs, kvi_values):
@@ -65,14 +62,15 @@ def compute_eavesdropper_gain(services, resources, gain_values_eavesdropper):
 
 # funzione calcolo computation time in h
 def compute_computation_time(service, resource):
-    return service.size * 1000 / (resource.availability * resource.fpc)  # / 3600  # per passare da secondi a ore
+    return service.size * 1000 / resource.fpc  # / 3600  # per passare da secondi a ore
 
 
 # funzione calcolo KVI sostenibilità ambientale
 def compute_energy_sustainability(resource, computation_time, CI=475, PUE=1.67):
-    return resource.carbon_offset - (computation_time / 3600) * resource.lambda_services_per_hour * (
+    return  computation_time * resource.lambda_services_per_hour * (
             resource.availability * resource.P_c * resource.u_c + resource.n_m * resource.P_m) * PUE * CI
 
+#resource.carbon_offset -
 
 # funzione calcolo KVI trustworthiness
 def compute_secrecy_capacity(service, gain_values, gain_values_eavesdropper, resource):
@@ -86,8 +84,7 @@ def compute_failure_probability(computation_time, resource):
     failure_probability = (1 - np.exp(exponent))  # p_rn piccolina
     F_rn_0 = (1 - failure_probability) ** resource.availability
     print("F_rn_0", F_rn_0)
-    time_in_hour = computation_time / 3600  # tempo di completamento da secondi ad ore perché sia coerente con lambda_24
-    return (F_rn_0 * time_in_hour * resource.lambda_services_per_hour) / 24
+    return (F_rn_0 * computation_time * resource.lambda_services_per_hour) / 24
 
 
 def compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, resources, CI, signs):
@@ -104,9 +101,9 @@ def compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, reso
         # Calcolo degli indicatori per tutte le risorse
         for n, resource in enumerate(resources):
             secrecy_capacity = float(compute_secrecy_capacity(service, gains[j, n], gains_eavesdroppers[j, n],
-                                                        resource))
+                                                                   resource))
             energy_sustainability = float(compute_energy_sustainability(resource, compute_computation_time(service, resource),
-                                                                  CI))
+                                                                             CI))
             failure_probability = float(compute_failure_probability(compute_computation_time(service, resource), resource))
 
             print(f"For ({service.id}, {resource.id}: secrecy capacity di {secrecy_capacity} bits/s/Hz, energy "
@@ -191,7 +188,7 @@ def compute_normalized_kpi(services, resources, signs):
         # Normalizzazione
         for n, resource in enumerate(resources):
             norm_kpi = normalize_single_row_kpi(service.kpi_service, service.kpi_service_req, resources, n, signs,
-                                                kpi_values)
+                                                     kpi_values)
             normalized_kpi[(resource.id, service.id)] = norm_kpi
 
             # Somma pesata con i pesi del servizio

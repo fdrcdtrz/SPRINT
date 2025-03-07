@@ -1,8 +1,7 @@
-from main import *
-from optimization import *
-from initialization import *
 import csv
 import random
+
+from optimization import *
 
 
 def greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500,
