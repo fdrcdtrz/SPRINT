@@ -279,7 +279,7 @@ if __name__ == '__main__':
         speed_values = [20e6, 30e6, 40e6, 60e6]  # Hz
         fcp_values = [3e9, 5e9, 15e9, 15e9]  # 2 - 5 Giga cicli
         N0 = 10e-10
-        lambda_failure_values = [4760, 8760, 8760, 9000]
+        lambda_failure_values = [8760, 8760, 8760, 100740]
         lambda_services_per_hour_values = [2e3, 2e3, 2e3, 3e3]
 
         # congiunti
