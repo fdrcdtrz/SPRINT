@@ -73,17 +73,17 @@ def compute_energy_sustainability(resource, computation_time, CI=475, PUE=1.67):
 #resource.carbon_offset -
 
 # funzione calcolo KVI trustworthiness
-def compute_secrecy_capacity(service, gain_values, gain_values_eavesdropper, resource):
-    return max(0, np.log2(1 + (service.p_s * gain_values / resource.N0)) -
-               np.log2(1 + (service.p_s * gain_values_eavesdropper / resource.N0)))
+# def compute_secrecy_capacity(service, gain_values, gain_values_eavesdropper, resource):
+#     return max(0, np.log2(1 + (service.p_s * gain_values / resource.N0)) -
+#                np.log2(1 + (service.p_s * gain_values_eavesdropper / resource.N0)))
 
 
 def compute_trustworthiness(service, resource):
     cyber_risk = resource.likelihood * service.impact
     cyber_confidence = 1 - cyber_risk
-    print(f"cyber_risk = {cyber_risk}, cyber_confidence = {cyber_confidence}")
-    trustworthiness = 900 + 4100 / (1 + np.exp(- 0.6 * (cyber_confidence - 0.5)))
-    print(f"trustworthiness = {trustworthiness}")
+    #print(f"cyber_risk = {cyber_risk}, cyber_confidence = {cyber_confidence}")
+    #trustworthiness = 900 + 4100 / (1 + np.exp(- 0.6 * (cyber_confidence - 0.5)))
+    #print(f"trustworthiness = {trustworthiness}")
     return 900 + 4100 / (1 + np.exp(- 0.6 * (cyber_confidence - 0.5)))
 
 # funzione calcolo KVI inclusiveness
@@ -115,8 +115,8 @@ def compute_normalized_kvi(services, resources, CI, signs):
                                                                              CI))
             failure_probability = float(compute_failure_probability(compute_computation_time(service, resource), resource))
 
-            print(f"For ({service.id}, {resource.id}: trustworthiness di {trustworthiness}, energy "
-                  f"sustainability di {energy_sustainability} in gCO2e, inclusiveness di {failure_probability}")
+            #print(f"For ({service.id}, {resource.id}: trustworthiness di {trustworthiness}, energy "
+                  #f"sustainability di {energy_sustainability} in gCO2e, inclusiveness di {failure_probability}")
 
             temp_kvi = [trustworthiness, failure_probability, energy_sustainability]
             kvi_values.append(temp_kvi)
