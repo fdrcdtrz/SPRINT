@@ -191,6 +191,7 @@ def compute_total_value_comparabile(service_requests, services, resources, item_
 
     return suboptimal_solutions
 
+
 def save_suboptimal_solutions(pareto_solutions, filename="suboptimal_solutions.csv"):
     pareto_solutions.sort()
 

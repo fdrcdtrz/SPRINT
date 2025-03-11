@@ -78,6 +78,7 @@ def compute_secrecy_capacity(service, gain_values, gain_values_eavesdropper, res
                np.log2(1 + (service.p_s * gain_values_eavesdropper / resource.N0)))
 
 
+
 # funzione calcolo KVI inclusiveness
 def compute_failure_probability(computation_time, resource):
     exponent = - 24 / resource.lambda_failure
