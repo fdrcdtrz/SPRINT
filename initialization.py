@@ -43,21 +43,21 @@ def normalize_single_row(kvi_service, kvi_service_req, resources, index_res, sig
     return np.abs(row)
 
 
-#funzione calcolo channel gain
-def compute_channel_gain_matrix(services, resources, gain_values):
-    gains = np.zeros((len(services), len(resources)))
-    for i, service in enumerate(services):
-        for j, resource in enumerate(resources):
-            gains[i, j] = gain_values[i+j]
-    return gains
-
-
-def compute_eavesdropper_gain(services, resources, gain_values_eavesdropper):
-    gains_eavesdropper = np.zeros((len(services), len(resources)))
-    for i, service in enumerate(services):
-        for j, resource in enumerate(resources):
-            gains_eavesdropper[i, j] = gain_values_eavesdropper[i+j]  # same
-    return gains_eavesdropper
+# #funzione calcolo channel gain
+# def compute_channel_gain_matrix(services, resources, gain_values):
+#     gains = np.zeros((len(services), len(resources)))
+#     for i, service in enumerate(services):
+#         for j, resource in enumerate(resources):
+#             gains[i, j] = gain_values[i+j]
+#     return gains
+#
+#
+# def compute_eavesdropper_gain(services, resources, gain_values_eavesdropper):
+#     gains_eavesdropper = np.zeros((len(services), len(resources)))
+#     for i, service in enumerate(services):
+#         for j, resource in enumerate(resources):
+#             gains_eavesdropper[i, j] = gain_values_eavesdropper[i+j]  # same
+#     return gains_eavesdropper
 
 
 # funzione calcolo computation time in h
@@ -78,6 +78,13 @@ def compute_secrecy_capacity(service, gain_values, gain_values_eavesdropper, res
                np.log2(1 + (service.p_s * gain_values_eavesdropper / resource.N0)))
 
 
+def compute_trustworthiness(service, resource):
+    cyber_risk = resource.likelihood * service.impact
+    cyber_confidence = 1 - cyber_risk
+    print(f"cyber_risk = {cyber_risk}, cyber_confidence = {cyber_confidence}")
+    trustworthiness = 900 + 4100 / (1 + np.exp(- 0.6 * (cyber_confidence - 0.5)))
+    print(f"trustworthiness = {trustworthiness}")
+    return 900 + 4100 / (1 + np.exp(- 0.6 * (cyber_confidence - 0.5)))
 
 # funzione calcolo KVI inclusiveness
 def compute_failure_probability(computation_time, resource):
@@ -88,34 +95,35 @@ def compute_failure_probability(computation_time, resource):
     return F_rn_0 * computation_time * resource.lambda_services_per_hour
 
 
-def compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, resources, CI, signs):
+def compute_normalized_kvi(services, resources, CI, signs):
     # calcolo indicatori per ogni coppia (servizio, risorsa), normalizzo e faccio somma pesata per V(X) finale
 
     normalized_kvi = {}
     weighted_sum_kvi = {}
-    gains = compute_channel_gain_matrix(services, resources, gain_values)
-    gains_eavesdroppers = compute_eavesdropper_gain(services, resources, gain_values_eavesdropper)
+    # gains = compute_channel_gain_matrix(services, resources, gain_values)
+    # gains_eavesdroppers = compute_eavesdropper_gain(services, resources, gain_values_eavesdropper)
     kvi_values = []  # lista di future liste di lunghezza 3, vanno tutti i kvi garantiti per il servizio s
 
     for j, service in enumerate(services):
 
         # Calcolo degli indicatori per tutte le risorse
         for n, resource in enumerate(resources):
-            secrecy_capacity = float(compute_secrecy_capacity(service, gains[j, n], gains_eavesdroppers[j, n],
-                                                                   resource))
+            # secrecy_capacity = float(compute_secrecy_capacity(service, gains[j, n], gains_eavesdroppers[j, n],
+            #                                                        resource))
+            trustworthiness = compute_trustworthiness(service, resource)
             energy_sustainability = resource.carbon_offset - float(compute_energy_sustainability(resource, compute_computation_time(service, resource),
                                                                              CI))
             failure_probability = float(compute_failure_probability(compute_computation_time(service, resource), resource))
 
-            print(f"For ({service.id}, {resource.id}: secrecy capacity di {secrecy_capacity} bits/s/Hz, energy "
+            print(f"For ({service.id}, {resource.id}: trustworthiness di {trustworthiness}, energy "
                   f"sustainability di {energy_sustainability} in gCO2e, inclusiveness di {failure_probability}")
 
-            temp_kvi = [secrecy_capacity, failure_probability, energy_sustainability]
+            temp_kvi = [trustworthiness, failure_probability, energy_sustainability]
             kvi_values.append(temp_kvi)
             # v_x = np.dot(service.weights_kvi, temp_kvi)
             # weighted_sum_kvi[(resource.id, service.id)] = float(v_x)
             # resource.kvi_resource = [secrecy_capacity, failure_probability, energy_sustainability]
-    kvi_values = MinMaxScaler().fit_transform(kvi_values)
+    # kvi_values = MinMaxScaler().fit_transform(kvi_values)
 
     # Normalizzazione
     for j, service in enumerate(services):

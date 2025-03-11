@@ -10,12 +10,13 @@ from knapsacks import *
 
 class Service:
 
-    def __init__(self, id, demand, min_kpi, min_kvi, kpi_service_req, kvi_service_req, kpi_service, kvi_service,
-                 weights_kpi, weights_kvi, size, p_s):
+    def __init__(self, id, demand, min_kpi, min_kvi, impact, kpi_service_req, kvi_service_req, kpi_service, kvi_service,
+                 weights_kpi, weights_kvi, size):
         self.id = id
         self.demand = demand
         self.min_kpi = 0  # valore minimo globale tollerabile kpi
-        self.min_kvi = 0  # valore minimo globale tollerabile kvi
+        self.min_kvi = 0
+        self.impact = impact  # valore minimo globale tollerabile kvi
         self.kpi_service_req = np.array(kpi_service_req)  # requested minimum
         self.kvi_service_req = np.array(kvi_service_req)  # requested minimum
         self.kpi_service = np.array(kpi_service)  # 4 KPI, valore desiderato
@@ -23,7 +24,7 @@ class Service:
         self.weights_kpi = np.array(weights_kpi)  # per calcolo kpi globale
         self.weights_kvi = np.array(weights_kvi)  # per calcolo kvi globale
         self.size = size
-        self.p_s = p_s
+        # self.risk_appetite = risk_appetite
 
     # property            # first decorate the getter method
     def get_id(self):  # This getter method name is *the* name
@@ -37,6 +38,9 @@ class Service:
 
     def get_min_kvi(self):  # This getter method name is *the* name
         return self.min_kvi
+
+    def get_impact(self):  # This getter method name is *the* name
+        return self.impact
 
     def get_kpi_service_req(self):  # This getter method name is *the* name
         return self.kpi_service_req
@@ -59,8 +63,8 @@ class Service:
     def get_size(self):  # This getter method name is *the* name
         return self.size
 
-    def get_p_s(self):  # This getter method name is *the* name
-        return self.p_s
+    # def get_risk_appetite(self):  # This getter method name is *the* name
+    #     return self.risk_appetite
 
     def set_id(self, value):  # This getter method name is *the* name
         self.id = value
@@ -73,6 +77,9 @@ class Service:
 
     def set_min_kvi(self, value):  # This setter method name is *the* name
         self.min_kvi = value
+
+    def set_impact(self, value):  # This setter method name is *the* name
+        self.impact = value
 
     def set_kpi_service_req(self, value):  # This setter method name is *the* name
         self.kpi_service_req = value
@@ -95,13 +102,13 @@ class Service:
     def set_size(self, value):  # This setter method name is *the* name
         self.size = value
 
-    def set_p_s(self, value):  # This setter method name is *the* name
-        self.p_s = value
+    # def set_risk_appetite(self, value):  # This setter method name is *the* name
+    #     self.risk_appetite = value
 
 
 class Resource:
     def __init__(self, id, availability, kpi_resource, kvi_resource, carbon_offset, P_c, u_c, P_m, fcp, N0,
-                 lambda_failure, lambda_services_per_hour):
+                 lambda_failure, lambda_services_per_hour, likelihood):
         self.id = id
         self.availability = availability
         self.kpi_resource = np.array(kpi_resource)
@@ -114,6 +121,7 @@ class Resource:
         self.N0 = N0
         self.lambda_failure = lambda_failure
         self.lambda_services_per_hour = lambda_services_per_hour
+        self.likelihood = likelihood
 
     def get_availability(self):  # This setter method name is *the* name
         return self.availability
@@ -148,6 +156,9 @@ class Resource:
     def get_lambda_services_per_hour(self):  # This setter method name is *the* name
         return self.lambda_services_per_hour
 
+    def get_likelihood(self):
+        return self.likelihood
+
     def set_availability(self, value):  # This setter method name is *the* name
         self.availability = value
 
@@ -181,6 +192,9 @@ class Resource:
     def set_lambda_services_per_hour(self, value):  # This setter method name is *the* name
         self.lambda_services_per_hour = value
 
+    def set_likelihood(self, value):
+        self.likelihood = value
+
 
 if __name__ == '__main__':
 
@@ -198,21 +212,24 @@ if __name__ == '__main__':
     data_rates = [70.0, 100.0, 100.0, 250.0]
     data_rates_req = [45.0, 60.0, 80.0, 95.0]
     sizes = [600e6, 1e9, 1e9, 1.2e9]  # Mb
-    p_s_values = [2, 2, 3, 4]
+    #p_s_values = [2, 2, 3, 4]
     demand_values = [2, 4, 6, 10]
+    impact_values = [0.25, 0.5, 0.75, 1]
+    # risk_appetite_values = [1, 2, 2, 3]
 
 
     services = []
     for i in range(num_services_type):
         chosen_index = i % len(demand_values)
 
-        service = Service(i, 0, 0, 0, 0, 0, 0,
-                          0, weights_kpi, weights_kvi, 0, 0)
+        service = Service(i, 0, 0, 0,0, 0, 0, 0,
+                          0, weights_kpi, weights_kvi, 0)
 
         deadline = deadlines[chosen_index]
         plr = plrs[chosen_index]
         plr_req = plrs_req[chosen_index]
         data_rate = data_rates[chosen_index]
+        impact = impact_values[chosen_index]
 
 
         if deadline > 9:
@@ -228,14 +245,14 @@ if __name__ == '__main__':
         service.set_kpi_service([deadline, data_rate, plr])
         service.set_kpi_service_req([deadline_req, data_rate_req, plr_req])
         service.set_demand(demand_values[chosen_index])
-        service.set_p_s(p_s_values[chosen_index])
+        service.set_impact(impact)
         service.set_size(sizes[chosen_index])
 
         services.append(service)
 
-        print(f"Service id: {services[i].id}, {services[i].demand}, {services[i].min_kpi}, {services[i].min_kvi}, "
+        print(f"Service id: {services[i].id}, {services[i].demand}, {services[i].min_kpi}, {services[i].impact}, "
               f"{services[i].kpi_service}, {services[i].kpi_service_req}, {services[i].kvi_service}, {services[i].kvi_service_req}, "
-              f"{services[i].size}, {services[i].p_s}")
+              f"{services[i].size}")
 
 
     for num_services in num_services_list:
@@ -266,11 +283,12 @@ if __name__ == '__main__':
         N0 = 10e-10
         lambda_failure_values = [8760, 8760, 8760, 45000, 45000]
         lambda_services_per_hour_values = [150, 200, 200, 250]  # avg servizi al giorno
+        likelihood_values = [0.25, 0.5, 0.75, 1]
 
         # congiunti
 
-        gain_values_eavesdropper = np.random.uniform(0.05, 0.5, num_resources * num_services)
-        gain_values = np.random.uniform(1, 6, num_resources * num_services)
+        # gain_values_eavesdropper = np.random.uniform(0.05, 0.5, num_resources * num_services)
+        # gain_values = np.random.uniform(1, 6, num_resources * num_services)
 
         # Indicators offered by the resources
 
@@ -282,7 +300,7 @@ if __name__ == '__main__':
 
         for i in range(num_resources):
             chosen_index = i % len(availability_values)
-            resource = Resource(i, 0, 0, [0, 0, 0], 0, 0, 0, 0, 0, N0, 0, 0)
+            resource = Resource(i, 0, 0, [0, 0, 0], 0, 0, 0, 0, 0, N0, 0, 0, 0)
 
             availability_value = availability_values[chosen_index]
             carbon_offset_value = carbon_offset_values[chosen_index]
@@ -292,6 +310,7 @@ if __name__ == '__main__':
             fcp_value = fcp_values[chosen_index]
             lambda_failure_value = lambda_failure_values[chosen_index]
             lambda_services_per_hour_value = lambda_services_per_hour_values[chosen_index]
+            likelihood_value = likelihood_values[chosen_index]
 
             deadline_off = deadlines_off[chosen_index]
             data_rate_off = data_rates_off[chosen_index]
@@ -306,13 +325,14 @@ if __name__ == '__main__':
             resource.set_fpc(fcp_value)
             resource.set_lambda_failure(lambda_failure_value)
             resource.set_lambda_services_per_hour(lambda_services_per_hour_value)
+            resource.set_likelihood(likelihood_value)
 
             resources.append(resource)
 
 
         for resource in resources:
             print(resource.id, resource.availability, resource.kpi_resource, resource.fpc,
-                  resource.P_m, resource.P_c, resource.lambda_services_per_hour)
+                  resource.P_m, resource.P_c, resource.lambda_services_per_hour, resource.likelihood)
 
         # Calcolo Q_MIN e computation time
 
@@ -326,9 +346,7 @@ if __name__ == '__main__':
                 print(computation_time)
 
         # TIS:  trustworthiness inclusiveness sustainability
-        normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, gain_values, gain_values_eavesdropper,
-                                                                  resources, CI=475, signs=[1, -1,
-                                                                                            -1])  #
+        normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1, -1])  #
 
         normalized_kpi, weighted_sum_kpi = compute_normalized_kpi(services, resources, signs=[-1, 1, -1])  # latenza, data rate e plr
 
