@@ -100,7 +100,7 @@ class Service:
 
 
 class Resource:
-    def __init__(self, id, availability, kpi_resource, kvi_resource, carbon_offset, P_c, u_c, n_m, P_m, speed, fcp, N0,
+    def __init__(self, id, availability, kpi_resource, kvi_resource, carbon_offset, P_c, u_c, P_m, fcp, N0,
                  lambda_failure, lambda_services_per_hour):
         self.id = id
         self.availability = availability
@@ -109,9 +109,7 @@ class Resource:
         self.carbon_offset = carbon_offset
         self.P_c = P_c
         self.u_c = u_c
-        self.n_m = n_m  # memory available GBytes
         self.P_m = P_m
-        self.speed = speed
         self.fpc = fcp
         self.N0 = N0
         self.lambda_failure = lambda_failure
@@ -135,14 +133,8 @@ class Resource:
     def get_u_c(self):  # This setter method name is *the* name
         return self.u_c
 
-    def get_n_m(self):  # This setter method name is *the* name
-        return self.n_m
-
     def get_P_m(self):  # This setter method name is *the* name
         return self.P_m
-
-    def get_speed(self):  # This setter method name is *the* name
-        return self.speed
 
     def get_fpc(self):  # This setter method name is *the* name
         return self.fpc
@@ -174,14 +166,8 @@ class Resource:
     def set_u_c(self, value):  # This setter method name is *the* name
         self.u_c = value
 
-    def set_n_m(self, value):  # This setter method name is *the* name
-        self.n_m = value
-
     def set_P_m(self, value):  # This setter method name is *the* name
         self.P_m = value
-
-    def set_speed(self, value):  # This setter method name is *the* name
-        self.speed = value
 
     def set_fpc(self, value):  # This setter method name is *the* name
         self.fpc = value
@@ -205,15 +191,15 @@ if __name__ == '__main__':
     weights_kpi = [1 / 3, 1 / 3, 1 / 3]
     weights_kvi = [1 / 3, 1 / 3, 1 / 3]
 
-    deadlines = [0.002, 0.5, 1, 150]
-    deadlines_req = [0.02, 0.6, 1.2, 250]
+    deadlines = [0.002, 0.5, 1, 10, 15]
+    deadlines_req = [0.02, 0.6, 1.2, 50]
     plrs = [20.0, 20.0, 30.0, 40.0]
     plrs_req = [35.0, 45.0, 45.0, 50.0]
     data_rates = [70.0, 100.0, 100.0, 250.0]
-    data_rates_req = [60.0, 45.0, 90.0, 95.0]
-    sizes = [250e3, 300e3, 600e6, 600e6]  # Mb
+    data_rates_req = [45.0, 60.0, 80.0, 95.0]
+    sizes = [600e6, 1e9, 1e9, 1.2e9]  # Mb
     p_s_values = [2, 2, 3, 4]
-    demand_values = [2, 4, 10, 20]
+    demand_values = [2, 4, 6, 10]
 
 
     services = []
@@ -228,13 +214,14 @@ if __name__ == '__main__':
         plr_req = plrs_req[chosen_index]
         data_rate = data_rates[chosen_index]
 
-        if deadline == 150:
-            deadline_req = 250
+
+        if deadline > 9:
+            deadline_req = deadlines_req[len(deadlines_req) - 1]
         else:
             deadline_req = deadlines_req[chosen_index]
 
         if data_rate == 70:
-            data_rate_req = 60
+            data_rate_req = data_rates_req[0]
         else:
             data_rate_req = data_rates_req[chosen_index]
 
@@ -271,16 +258,14 @@ if __name__ == '__main__':
         start = time.time()
 
         availability_values = [10, 20, 20, 50]
-        carbon_offset_values = [500000, 700000, 800000, 900000]
-        P_c_values = [0.01, 0.02, 0.04, 0.04]
-        u_c_values = [0.1, 0.4, 0.8, 1]
-        n_m_values = [20, 20, 30, 60]
-        P_m_values = [0.01, 0.01, 0.015, 0.2]
-        speed_values = [20e6, 30e6, 40e6, 60e6]  # Hz
-        fcp_values = [4e9, 7e9, 15e9, 15e9]  # 2 - 5 Giga cicli
+        carbon_offset_values = [(1.5*1e6) / 365, (2*1e6) / 365, (2*1e6) / 365, (2.5*1e6) / 365]  # x grammi * 10^6 (ton) /365 gg as avg, con x = [1.5, 2, 2.5]
+        P_c_values = [0.01, 0.02, 0.02, 0.04]
+        u_c_values = [0.1, 0.5, 0.8, 1]
+        P_m_values = [0.1, 0.15, 0.15, 0.2]
+        fcp_values = [40e9, 100e9, 100e9, 150e9]
         N0 = 10e-10
-        lambda_failure_values = [8760, 8760, 8760, 100740]
-        lambda_services_per_hour_values = [2e3, 2e3, 2e3, 3e3]
+        lambda_failure_values = [8760, 8760, 8760, 45000, 45000]
+        lambda_services_per_hour_values = [150, 200, 200, 250]  # avg servizi al giorno
 
         # congiunti
 
@@ -289,7 +274,7 @@ if __name__ == '__main__':
 
         # Indicators offered by the resources
 
-        deadlines_off = [0.001, 0.4, 0.8, 100]
+        deadlines_off = [0.001, 0.4, 0.8, 20]
         data_rates_off = [85.0, 110.0, 110.0, 250.0]
         plr_off = [10.0, 20.0, 20.0, 40.0]
 
@@ -297,15 +282,13 @@ if __name__ == '__main__':
 
         for i in range(num_resources):
             chosen_index = i % len(availability_values)
-            resource = Resource(i, 0, 0, [0, 0, 0], 0, 0, 0, 0, 0, 0, 0, N0, 0, 0)
+            resource = Resource(i, 0, 0, [0, 0, 0], 0, 0, 0, 0, 0, N0, 0, 0)
 
             availability_value = availability_values[chosen_index]
             carbon_offset_value = carbon_offset_values[chosen_index]
             P_c_value = P_c_values[chosen_index]
             u_c_value = u_c_values[chosen_index]
-            n_m_value = n_m_values[chosen_index]
             P_m_value = P_m_values[chosen_index]
-            speed_value = speed_values[chosen_index]
             fcp_value = fcp_values[chosen_index]
             lambda_failure_value = lambda_failure_values[chosen_index]
             lambda_services_per_hour_value = lambda_services_per_hour_values[chosen_index]
@@ -319,9 +302,7 @@ if __name__ == '__main__':
             resource.set_carbon_offset(carbon_offset_value)
             resource.set_P_c(P_c_value)
             resource.set_u_c(u_c_value)
-            resource.set_n_m(n_m_value)
             resource.set_P_m(P_m_value)
-            resource.set_speed(speed_value)
             resource.set_fpc(fcp_value)
             resource.set_lambda_failure(lambda_failure_value)
             resource.set_lambda_services_per_hour(lambda_services_per_hour_value)
@@ -330,8 +311,8 @@ if __name__ == '__main__':
 
 
         for resource in resources:
-            print(resource.id, resource.availability, resource.kpi_resource, resource.n_m, resource.fpc,
-                  resource.P_m, resource.P_c, resource.speed, resource.lambda_services_per_hour)
+            print(resource.id, resource.availability, resource.kpi_resource, resource.fpc,
+                  resource.P_m, resource.P_c, resource.lambda_services_per_hour)
 
         # Calcolo Q_MIN e computation time
 
@@ -371,6 +352,8 @@ if __name__ == '__main__':
         # weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=delta, results_dir=results_dir)
 
         # plot_pareto_front(pareto_solutions_exact)
+        # pareto_filename = os.path.join(results_dir, "pareto_solutions.csv")
+        # save_pareto_solutions(pareto_solutions_exact, filename=pareto_filename)
 
 
         ############ APPROCCI BENCHMARK: GREEDY ASSIGNMENT KPI E RANDOM ASSIGNMENT
@@ -429,8 +412,14 @@ if __name__ == '__main__':
                     save_results_csv_lagrangian(service_requests,
                                                 services, resources, item_assignment, weighted_sum_kpi,
                                                 weighted_sum_kvi,
-                                                results_dir=results_dir, filename=f"iteration_{k + 1}.csv"
+                                                results_dir=results_dir, filename=f"alpha_{alpha}_iteration_{k}.csv"
                                                 )
+                    suboptimal_solutions = compute_total_value_comparabile(service_requests, services, resources, item_assignment,
+                                                    weighted_sum_kpi, weighted_sum_kvi)
+
+                    save_suboptimal_solutions(suboptimal_solutions, filename=f"alpha_{alpha}_iteration_{k}.csv")
+
+
                     break
 
                 # Riparazione
@@ -460,8 +449,14 @@ if __name__ == '__main__':
                 save_results_csv_lagrangian(service_requests,
                                             services, resources, item_assignment_repaired, weighted_sum_kpi,
                                             weighted_sum_kvi,
-                                            results_dir=results_dir, filename=f"alpha_{alpha}_iteration_{k + 1}.csv"
+                                            results_dir=results_dir, filename=f"alpha_{alpha}_iteration_{k}.csv"
                                             )
+
+                suboptimal_solutions = compute_total_value_comparabile(service_requests, services, resources,
+                                                                       item_assignment_repaired,
+                                                                       weighted_sum_kpi, weighted_sum_kvi)
+
+                save_suboptimal_solutions(suboptimal_solutions, filename=f"alpha_{alpha}_iteration_{k}.csv")
 
                 # Convergenza
                 gap = (UB - LB) / max(1, abs(LB))
@@ -476,5 +471,7 @@ if __name__ == '__main__':
         # Tempo di esecuzione
         end_time = time.time()
         time_elapsed = end_time - start
+        # with open(os.path.join(results_dir, "execution_time.txt"), "w") as file:
+        #     file.write(f"Servizi: {num_services}, Tempo: {time_elapsed:.6f} sec\n")
 
         print(f"Completato per {num_services} servizi. Tempo: {time_elapsed:.6f} sec")

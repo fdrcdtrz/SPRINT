@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import csv
 import pandas as pd
 
 
@@ -168,6 +169,35 @@ def compute_total_value(service_requests, services, resources, item_assignment, 
             total_value += service_value  # Somma al valore totale
 
     return total_value
+
+def compute_total_value_comparabile(service_requests, services, resources, item_assignment, weighted_sum_kpi, weighted_sum_kvi):
+    total_kpi_value = 0
+    total_kvi_value = 0
+    suboptimal_solutions = []
+
+
+    for j, assigned_r in enumerate(item_assignment):
+        if assigned_r != -1:  # Se la richiesta è assegnata
+            service_id = service_requests[j]
+            s = services[service_id]
+            r = resources[assigned_r]
+            kpi_value = weighted_sum_kpi.get((r.id, service_id), 0)
+            kvi_value = weighted_sum_kvi.get((r.id, service_id), 0)
+
+            # Valore totale per questa assegnazione
+            total_kvi_value += kvi_value
+            total_kpi_value += kpi_value  # Somma al valore totale
+            suboptimal_solutions.append((kpi_value, kvi_value))
+
+    return suboptimal_solutions
+
+def save_suboptimal_solutions(pareto_solutions, filename="suboptimal_solutions.csv"):
+    pareto_solutions.sort()
+
+    with open(filename, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["KPI_Totale", "KVI_Totale"])
+        writer.writerows(pareto_solutions)
 
 
 #########

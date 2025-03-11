@@ -67,8 +67,8 @@ def compute_computation_time(service, resource):
 
 # funzione calcolo KVI sostenibilità ambientale
 def compute_energy_sustainability(resource, computation_time, CI=475, PUE=1.67):
-    return  computation_time * resource.lambda_services_per_hour * (
-            resource.availability * resource.P_c * resource.u_c + resource.n_m * resource.P_m) * PUE * CI
+    return  (computation_time / 3600) * resource.lambda_services_per_hour * (
+            resource.availability * resource.P_c * resource.u_c + resource.availability * resource.P_m) * PUE * CI
 
 #resource.carbon_offset -
 
@@ -84,7 +84,7 @@ def compute_failure_probability(computation_time, resource):
     failure_probability = (1 - np.exp(exponent))  # p_rn piccolina
     F_rn_0 = (1 - failure_probability) ** resource.availability
     print("F_rn_0", F_rn_0)
-    return (F_rn_0 * computation_time * resource.lambda_services_per_hour) / 24
+    return F_rn_0 * computation_time * resource.lambda_services_per_hour
 
 
 def compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, resources, CI, signs):
@@ -102,7 +102,7 @@ def compute_normalized_kvi(services, gain_values, gain_values_eavesdropper, reso
         for n, resource in enumerate(resources):
             secrecy_capacity = float(compute_secrecy_capacity(service, gains[j, n], gains_eavesdroppers[j, n],
                                                                    resource))
-            energy_sustainability = float(compute_energy_sustainability(resource, compute_computation_time(service, resource),
+            energy_sustainability = resource.carbon_offset - float(compute_energy_sustainability(resource, compute_computation_time(service, resource),
                                                                              CI))
             failure_probability = float(compute_failure_probability(compute_computation_time(service, resource), resource))
 
