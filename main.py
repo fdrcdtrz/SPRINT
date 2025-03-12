@@ -6,6 +6,7 @@ import numpy as np
 from benchmark import *
 from initialization import *
 from knapsacks import *
+from optimization import *
 
 
 class Service:
@@ -198,10 +199,10 @@ class Resource:
 
 if __name__ == '__main__':
 
-    num_services_list = [5]
+    num_services_list = [100]
     num_services_type = 8
-    delta = 0.1
-    num_resources = 5
+    delta = 0.01
+    num_resources = 80
     weights_kpi = [1 / 3, 1 / 3, 1 / 3]
     weights_kvi = [1 / 3, 1 / 3, 1 / 3]
 
@@ -213,7 +214,7 @@ if __name__ == '__main__':
     data_rates_req = [45.0, 60.0, 80.0, 95.0]
     sizes = [600e6, 1e9, 1e9, 1.2e9]  # Mb
     #p_s_values = [2, 2, 3, 4]
-    demand_values = [2, 4, 6, 10]
+    demand_values = [2, 4, 4, 5]
     impact_values = [0.25, 0.5, 0.75, 1]
     # risk_appetite_values = [1, 2, 2, 3]
 
@@ -256,14 +257,14 @@ if __name__ == '__main__':
 
 
     for num_services in num_services_list:
-        results_dir = f"test_benchmark_{num_services}_200_{delta}_1"
+        results_dir = f"test_results_{num_services}_{num_resources}_{delta}_1"
         # path_onedrive = r"C:\Users\Federica\OneDrive - Politecnico di Bari\phd\works\comnet\Simulazioni"
         path_locale = r"C:\Users\Federica de Trizio\PycharmProjects\CutAndSolve"
         full_path = os.path.join(path_locale, results_dir)
         os.makedirs(full_path, exist_ok=True)
 
         # Probabilità assegnate ai servizi
-        probabilities = [1, 1, 1, 3, 4, 5, 6, 7, 8, 8]
+        probabilities = [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
         service_requests = []
 
         # Generazione delle richieste basate sulla distribuzione
@@ -274,7 +275,7 @@ if __name__ == '__main__':
 
         start = time.time()
 
-        availability_values = [10, 20, 20, 50]
+        availability_values = [10, 20, 50, 50]
         carbon_offset_values = [(1.5*1e6) / 365, (2*1e6) / 365, (2*1e6) / 365, (2.5*1e6) / 365]  # x grammi * 10^6 (ton) /365 gg as avg, con x = [1.5, 2, 2.5]
         P_c_values = [0.01, 0.02, 0.02, 0.04]
         u_c_values = [0.1, 0.5, 0.8, 1]
@@ -350,6 +351,35 @@ if __name__ == '__main__':
 
         normalized_kpi, weighted_sum_kpi = compute_normalized_kpi(services, resources, signs=[-1, 1, -1])  # latenza, data rate e plr
 
+        ############# RISOLUZIONE CLASSICA ############################
+
+        solutions_alpha = []
+
+        for alpha in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:  # Test con diversi pesi
+            kpi_value, kvi_value = optimize_multiobj_weighted(service_requests, services, resources,
+                                                              normalized_kpi, normalized_kvi,
+                                                              weighted_sum_kpi, weighted_sum_kvi,
+                                                              alpha, results_dir)
+            if kpi_value is not None:
+                solutions_alpha.append((kpi_value, kvi_value))
+
+        # Plotta il fronte di Pareto
+        plot_pareto_front(solutions_alpha)
+        print(solutions_alpha)
+
+        solutions_BB = []
+        for alpha in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:  # Test con diversi pesi
+            kpi_value, kvi_value = optimize_branch_and_bound(service_requests, services, resources, normalized_kpi, normalized_kvi,
+                              weighted_sum_kpi, weighted_sum_kvi, alpha, results_dir)
+            if kpi_value is not None:
+                solutions_BB.append((kpi_value, kvi_value))
+
+        # Plotta il fronte di Pareto
+        plot_pareto_front(solutions_BB)
+        print(solutions_BB)
+
+
+
         ############## METODO EPSILON-CONSTRAINT: CALCOLO IDEAL E NADIR POINTS E IMPLEMENTAZIONE DEL METODO ESATTO
 
         # V_I = optimize_kvi(service_requests, services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
@@ -368,7 +398,7 @@ if __name__ == '__main__':
         #
         # pareto_solutions_exact = epsilon_constraint_exact(service_requests, services, resources, normalized_kpi, normalized_kvi,
         # weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=delta, results_dir=results_dir)
-
+        #
         # plot_pareto_front(pareto_solutions_exact)
         # pareto_filename = os.path.join(results_dir, "pareto_solutions.csv")
         # save_pareto_solutions(pareto_solutions_exact, filename=pareto_filename)
@@ -376,120 +406,122 @@ if __name__ == '__main__':
 
         ############ APPROCCI BENCHMARK: GREEDY ASSIGNMENT KPI E RANDOM ASSIGNMENT
 
-        assignment, total_kpi, total_kvi = greedy_assignment_kpi(service_requests, services, resources,
-                                                                 weighted_sum_kpi,
-                                                                 weighted_sum_kvi, max_assignments=10)
-
-        save_assignment_results(service_requests, assignment, services, resources,
-                                weighted_sum_kpi, weighted_sum_kvi, normalized_kpi, normalized_kvi, total_kpi,
-                                total_kvi,
-                                results_dir=results_dir, filename="greedy_kpi_results.csv")
-
-        assignment, total_kpi, total_kvi = random_assignment(service_requests, services, resources, weighted_sum_kpi,
-                                                             weighted_sum_kvi)
-
-        print(f"Assignment: {assignment}, Total KPI: {total_kpi}, Total KVI: {total_kvi}, service_requests: {service_requests}")
-
-        save_assignment_results(service_requests, assignment, services, resources, weighted_sum_kpi,
-                                weighted_sum_kvi, normalized_kpi, normalized_kvi, total_kpi, total_kvi,
-                                results_dir=results_dir,
-                                filename="random_results.csv")
+        # assignment, total_kpi, total_kvi = greedy_assignment_kpi(service_requests, services, resources,
+        #                                                          weighted_sum_kpi,
+        #                                                          weighted_sum_kvi, max_assignments=10)
+        #
+        # save_assignment_results(service_requests, assignment, services, resources,
+        #                         weighted_sum_kpi, weighted_sum_kvi, normalized_kpi, normalized_kvi, total_kpi,
+        #                         total_kvi,
+        #                         results_dir=results_dir, filename="greedy_kpi_results.csv")
+        #
+        # assignment, total_kpi, total_kvi = random_assignment(service_requests, services, resources, weighted_sum_kpi,
+        #                                                      weighted_sum_kvi)
+        #
+        # print(f"Assignment: {assignment}, Total KPI: {total_kpi}, Total KVI: {total_kvi}, service_requests: {service_requests}")
+        #
+        # save_assignment_results(service_requests, assignment, services, resources, weighted_sum_kpi,
+        #                         weighted_sum_kvi, normalized_kpi, normalized_kvi, total_kpi, total_kvi,
+        #                         results_dir=results_dir,
+        #                         filename="random_results.csv")
 
         ############ APPROCCIO LAGRANGIAN-HEURISTIC BASED
 
-        # Parametri del metodo subgradiente
-        max_iterations = 20  # Numero massimo di iterazioni
-        tolerance = 1e-3  # Soglia di convergenza
-        z = 0.5  # Parametro per lo step size
-
-        # Loop iterativo per il metodo subgradiente
-        for alpha in [i / 10 for i in range(11)]:
-            lambda_ = np.ones(len(service_requests)) * 0.1
-            UB = float("inf")  # Upper Bound iniziale
-            LB = float("-inf")  # Lower Bound iniziale
-
-            for k in range(max_iterations):
-                # Zaini
-                total_value_not_lagrangian, item_assignment = multi_knapsack_dp(
-                    service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_, alpha
-                )
-
-                #  Total value lagrangian
-                total_value_lagrangian = compute_total_value_lagrangian(services, resources,
-                                                                        item_assignment,
-                                                                        weighted_sum_kpi, weighted_sum_kvi,
-                                                                        lambda_, total_value_not_lagrangian, alpha)
-
-                print("Valore totale lagrangiano:", total_value_not_lagrangian)
-                print("Valore totale lagrangiano corretto:", total_value_lagrangian)
-                print("Assegnazione lagrangiana:", item_assignment)
-
-                if is_feasible_solution(service_requests, services, resources, item_assignment, weighted_sum_kpi,
-                                        weighted_sum_kvi):
-                    print(f"Soluzione feasible trovata all'iterazione {k + 1}, interrompo l'ottimizzazione.")
-                    save_results_csv_lagrangian(service_requests,
-                                                services, resources, item_assignment, weighted_sum_kpi,
-                                                weighted_sum_kvi,
-                                                results_dir=results_dir, filename=f"alpha_{alpha}_iteration_{k}.csv"
-                                                )
-                    suboptimal_solutions = compute_total_value_comparabile(service_requests, services, resources, item_assignment,
-                                                    weighted_sum_kpi, weighted_sum_kvi)
-
-                    save_suboptimal_solutions(suboptimal_solutions, filename=f"alpha_{alpha}_iteration_{k}.csv")
-
-
-                    break
-
-                # Riparazione
-                item_assignment_repaired = repair_solution(service_requests,
-                                                           services, resources, item_assignment, weighted_sum_kpi,
-                                                           weighted_sum_kvi, lambda_, alpha
-                                                           )
-
-                # Valore f. obiettivo con soluzione feasible (riparata)
-                total_value_feasible = compute_total_value(service_requests,
-                                                           services, resources, item_assignment_repaired,
-                                                           weighted_sum_kpi,
-                                                           weighted_sum_kvi, alpha
-                                                           )
-
-                print("Valore totale riparato:", total_value_feasible)
-                print("Assegnazione riparata:", item_assignment_repaired)
-
-                # Aggiorna i moltiplicatori di Lagrange, lo step size, UB e LB
-                lambda_, UB, LB = update_lagrangian_multipliers(service_requests,
-                                                                services, resources, item_assignment_repaired,
-                                                                weighted_sum_kpi, weighted_sum_kvi,
-                                                                lambda_, UB, LB, total_value_lagrangian,
-                                                                total_value_feasible, z
-                                                                )
-
-                save_results_csv_lagrangian(service_requests,
-                                            services, resources, item_assignment_repaired, weighted_sum_kpi,
-                                            weighted_sum_kvi,
-                                            results_dir=results_dir, filename=f"alpha_{alpha}_iteration_{k}.csv"
-                                            )
-
-                suboptimal_solutions = compute_total_value_comparabile(service_requests, services, resources,
-                                                                       item_assignment_repaired,
-                                                                       weighted_sum_kpi, weighted_sum_kvi)
-
-                save_suboptimal_solutions(suboptimal_solutions, filename=f"alpha_{alpha}_iteration_{k}.csv")
-
-                # Convergenza
-                gap = (UB - LB) / max(1, abs(LB))
-                print(f"Iterazione {k + 1}: UB = {UB:.4f}, LB = {LB:.4f}, Gap = {gap:.6f}")
-
-                if gap < tolerance:
-                    print("The covergence was reached.")
-                    break
-
-                print(f"Valore finale UB: {UB}, LB: {LB}")
+        #Parametri del metodo subgradiente
+        # max_iterations = 20  # Numero massimo di iterazioni
+        # tolerance = 1e-3  # Soglia di convergenza
+        # z = 0.5  # Parametro per lo step size
+        #
+        # # Loop iterativo per il metodo subgradiente
+        # for alpha in [i / 10 for i in range(11)]:
+        #     lambda_ = np.ones(len(service_requests)) * 0.1
+        #     UB = float("inf")  # Upper Bound iniziale
+        #     LB = float("-inf")  # Lower Bound iniziale
+        #
+        #     for k in range(max_iterations):
+        #         # Zaini
+        #         total_value_not_lagrangian, item_assignment = multi_knapsack_dp(
+        #             service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, lambda_, alpha
+        #         )
+        #
+        #         #  Total value lagrangian
+        #         total_value_lagrangian = compute_total_value_lagrangian(services, resources,
+        #                                                                 item_assignment,
+        #                                                                 weighted_sum_kpi, weighted_sum_kvi,
+        #                                                                 lambda_, total_value_not_lagrangian, alpha)
+        #
+        #         print("Valore totale lagrangiano:", total_value_not_lagrangian)
+        #         print("Valore totale lagrangiano corretto:", total_value_lagrangian)
+        #         print("Assegnazione lagrangiana:", item_assignment)
+        #
+        #         if is_feasible_solution(service_requests, services, resources, item_assignment, weighted_sum_kpi,
+        #                                 weighted_sum_kvi):
+        #             print(f"Soluzione feasible trovata all'iterazione {k + 1}, interrompo l'ottimizzazione.")
+        #             save_results_csv_lagrangian(service_requests,
+        #                                         services, resources, item_assignment, weighted_sum_kpi,
+        #                                         weighted_sum_kvi,
+        #                                         results_dir=results_dir, filename=f"alpha_{alpha}_iteration_{k}.csv"
+        #                                         )
+        #             suboptimal_solutions = compute_total_value_comparabile(service_requests, services, resources, item_assignment,
+        #                                             weighted_sum_kpi, weighted_sum_kvi)
+        #
+        #             save_suboptimal_solutions(suboptimal_solutions, filename=f"alpha_{alpha}_iteration_{k}.csv")
+        #             plot_pareto_front(suboptimal_solutions)
+        #
+        #
+        #             break
+        #
+        #         # Riparazione
+        #         item_assignment_repaired = repair_solution(service_requests,
+        #                                                    services, resources, item_assignment, weighted_sum_kpi,
+        #                                                    weighted_sum_kvi, lambda_, alpha
+        #                                                    )
+        #
+        #         # Valore f. obiettivo con soluzione feasible (riparata)
+        #         total_value_feasible = compute_total_value(service_requests,
+        #                                                    services, resources, item_assignment_repaired,
+        #                                                    weighted_sum_kpi,
+        #                                                    weighted_sum_kvi, alpha
+        #                                                    )
+        #
+        #         print("Valore totale riparato:", total_value_feasible)
+        #         print("Assegnazione riparata:", item_assignment_repaired)
+        #
+        #         # Aggiorna i moltiplicatori di Lagrange, lo step size, UB e LB
+        #         lambda_, UB, LB = update_lagrangian_multipliers(service_requests,
+        #                                                         services, resources, item_assignment_repaired,
+        #                                                         weighted_sum_kpi, weighted_sum_kvi,
+        #                                                         lambda_, UB, LB, total_value_lagrangian,
+        #                                                         total_value_feasible, z
+        #                                                         )
+        #
+        #         save_results_csv_lagrangian(service_requests,
+        #                                     services, resources, item_assignment_repaired, weighted_sum_kpi,
+        #                                     weighted_sum_kvi,
+        #                                     results_dir=results_dir, filename=f"alpha_{alpha}_iteration_{k}.csv"
+        #                                     )
+        #
+        #         suboptimal_solutions = compute_total_value_comparabile(service_requests, services, resources,
+        #                                                                item_assignment_repaired,
+        #                                                                weighted_sum_kpi, weighted_sum_kvi)
+        #
+        #         save_suboptimal_solutions(suboptimal_solutions, filename=f"alpha_{alpha}_iteration_{k}.csv")
+        #         plot_pareto_front(suboptimal_solutions)
+        #
+        #         # Convergenza
+        #         gap = (UB - LB) / max(1, abs(LB))
+        #         print(f"Iterazione {k + 1}: UB = {UB:.4f}, LB = {LB:.4f}, Gap = {gap:.6f}")
+        #
+        #         if gap < tolerance:
+        #             print("The covergence was reached.")
+        #             break
+        #
+        #         print(f"Valore finale UB: {UB}, LB: {LB}")
 
         # Tempo di esecuzione
         end_time = time.time()
         time_elapsed = end_time - start
-        # with open(os.path.join(results_dir, "execution_time.txt"), "w") as file:
-        #     file.write(f"Servizi: {num_services}, Tempo: {time_elapsed:.6f} sec\n")
+        with open(os.path.join(results_dir, "execution_time.txt"), "w") as file:
+            file.write(f"Servizi: {num_services}, Tempo: {time_elapsed:.6f} sec\n")
 
         print(f"Completato per {num_services} servizi. Tempo: {time_elapsed:.6f} sec")

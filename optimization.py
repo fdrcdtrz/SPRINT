@@ -559,3 +559,246 @@ def epsilon_constraint_exact(service_requests, services, resources, normalized_k
         epsilon += delta
 
     return pareto_solutions
+
+def optimize_multiobj_kpi_kvi(service_requests, services, resources, normalized_kpi, normalized_kvi,
+                              weighted_sum_kpi, weighted_sum_kvi, results_dir):
+
+    solutions = []
+
+    model = Model("MultiObj_KPI_KVI")
+
+    # Variabili di decisione x[s, r] ∈ {0,1}
+    x = model.addVars(
+        [(request_id, r.id) for request_id in range(len(service_requests)) for r in resources],
+        vtype=GRB.BINARY,
+        name="x"
+    )
+
+    # Vincoli: KPI e KVI minimi
+    for request_id in range(len(service_requests)):
+        service_id = service_requests[request_id]
+        s = services[service_id]
+
+        for r in resources:
+            model.addConstr(
+                (weighted_sum_kpi[(r.id, service_id)] - s.min_kpi) * x[request_id, r.id] >= 0,
+                f"kpi_threshold_{request_id}_{r.id}"
+            )
+            model.addConstr(
+                (weighted_sum_kvi[(r.id, service_id)]) * x[request_id, r.id] >= 0,
+                f"kvi_threshold_{request_id}_{r.id}"
+            )
+
+    # Ogni servizio è assegnato a una sola risorsa
+    for request_id, service_id in enumerate(service_requests):
+        model.addConstr(sum(x[request_id, r.id] for r in resources) == 1, f"assign_service_{request_id}")
+
+    # La capacità della risorsa non deve essere superata
+    for r in resources:
+        model.addConstr(
+            sum(x[request_id, r.id] * services[service_requests[request_id]].demand
+                for request_id in range(len(service_requests))) <= r.availability,
+            f"capacity_{r.id}"
+        )
+
+    # Definizione degli obiettivi multipli
+    model.ModelSense = GRB.MAXIMIZE
+
+    # Primo obiettivo: Massimizzare KPI
+    model.setObjectiveN(
+        sum(weighted_sum_kpi[(r.id, service_requests[request_id])] * x[request_id, r.id]
+            for request_id in range(len(service_requests)) for r in resources),
+        index=0,  # Primo obiettivo
+        priority=1,  # Priorità più alta
+        name="Maximize_KPI"
+    )
+
+    # Secondo obiettivo: Massimizzare KVI
+    model.setObjectiveN(
+        sum(weighted_sum_kvi[(r.id, service_requests[request_id])] * x[request_id, r.id]
+            for request_id in range(len(service_requests)) for r in resources),
+        index=1,  # Secondo obiettivo
+        priority=1,  # Stessa priorità per il metodo della somma pesata
+        name="Maximize_KVI"
+    )
+
+    # Ottimizzazione multi-obiettivo
+    model.optimize()
+
+    # Verifica se la soluzione è ottimale
+    if model.status == GRB.OPTIMAL:
+        print(f"\nSoluzione Ottima: KPI={model.ObjNVal[0]}, KVI={model.ObjNVal[1]}")
+        kpi_value = model.ObjNVal[0]
+        kvi_value = model.ObjNVal[1]
+        solutions.append((kpi_value, kvi_value))
+
+        save_results_csv(service_requests, services, resources, x, normalized_kpi, normalized_kvi,
+                         weighted_sum_kpi, weighted_sum_kvi, results_dir, filename=f"results_both_obj.csv")
+
+    else:
+        print("Il modello non ha trovato una soluzione ottima.")
+        return None, None
+
+def optimize_multiobj_weighted(service_requests, services, resources, normalized_kpi, normalized_kvi,
+                               weighted_sum_kpi, weighted_sum_kvi, alpha, results_dir):
+
+    model = Model("MultiObj_Weighted_KPI_KVI")
+
+    # Variabili di decisione x[s, r] ∈ {0,1}
+    x = model.addVars(
+        [(request_id, r.id) for request_id in range(len(service_requests)) for r in resources],
+        vtype=GRB.BINARY,
+        name="x"
+    )
+
+    # Vincolo 2: KPI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+    for request_id in range(len(service_requests)):
+        service_id = service_requests[request_id]  # ID del servizio associato alla richiesta
+        s = services[service_id]  # Oggetto Service corrispondente
+
+        for r in resources:
+            model.addConstr(
+                (weighted_sum_kpi[(r.id, service_id)] - s.min_kpi) * x[request_id, r.id] >= 0,
+                f"kpi_threshold_{request_id}_{r.id}"
+            )
+
+    # Vincolo 3: KVI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+    for request_id in range(len(service_requests)):
+        service_id = service_requests[request_id]  # ID del servizio associato alla richiesta
+        s = services[service_id]  # Oggetto Service corrispondente
+
+        for r in resources:
+            model.addConstr(
+                weighted_sum_kvi[(r.id, service_id)] * x[request_id, r.id] >= 0,
+                f"kpi_threshold_{request_id}_{r.id}"
+            )
+
+    # Vincolo 4: Ogni servizio è assegnato a una sola risorsa
+    for request_id, service_id in enumerate(service_requests):
+        s = services[service_id]
+        model.addConstr(sum(x[request_id, r.id] for r in resources) == 1, f"assign_service_{request_id}")
+
+    # Vincolo 5: Capacità della risorsa non deve essere superata
+    for r in resources:
+        model.addConstr(
+            sum(x[request_id, r.id] * services[service_requests[request_id]].demand
+                for request_id in range(len(service_requests))) <= r.availability,
+            f"capacity_{r.id}"
+        )
+
+    # Definizione della funzione obiettivo combinata
+    model.setObjective(
+        sum((alpha * weighted_sum_kpi[(r.id, service_requests[request_id])] +
+             (1 - alpha) * weighted_sum_kvi[(r.id, service_requests[request_id])]) * x[request_id, r.id]
+            for request_id in range(len(service_requests)) for r in resources),
+        GRB.MAXIMIZE
+    )
+
+    # Ottimizza il modello
+    model.optimize()
+
+    # Verifica se la soluzione è ottimale
+    if model.status == GRB.OPTIMAL:  # Calcoliamo KPI e KVI separatamente
+        kpi_value = sum(
+            weighted_sum_kpi[(r.id, service_requests[request_id])] * x[request_id, r.id].X
+            for request_id in range(len(service_requests)) for r in resources
+        ) * alpha
+
+        kvi_value = sum(
+            weighted_sum_kvi[(r.id, service_requests[request_id])] * x[request_id, r.id].X
+            for request_id in range(len(service_requests)) for r in resources
+        ) * (1 - alpha)
+
+        print(f"\nSoluzione trovata per α={alpha}: KPI={kpi_value}, KVI={kvi_value}")
+
+        save_results_csv(service_requests, services, resources, x, normalized_kpi, normalized_kvi,
+                         weighted_sum_kpi, weighted_sum_kvi, results_dir,
+                         filename=f"results_weighted_alpha_{alpha}.csv")
+        return kpi_value, kvi_value
+    else:
+        print(f"Il modello non ha trovato una soluzione ottima per α={alpha}.")
+        return None, None
+
+
+def optimize_branch_and_bound(service_requests, services, resources, normalized_kpi, normalized_kvi,
+                              weighted_sum_kpi, weighted_sum_kvi, alpha, results_dir):
+
+    model = Model("Branch_And_Bound")
+
+    # Variabili di decisione x[s, r] ∈ {0,1}
+    x = model.addVars(
+        [(request_id, r.id) for request_id in range(len(service_requests)) for r in resources],
+        vtype=GRB.BINARY,
+        name="x"
+    )
+
+    # Vincoli: KPI e KVI minimi
+    for request_id in range(len(service_requests)):
+        service_id = service_requests[request_id]
+        s = services[service_id]
+
+        for r in resources:
+            model.addConstr(
+                (weighted_sum_kpi[(r.id, service_id)] - s.min_kpi) * x[request_id, r.id] >= 0,
+                f"kpi_threshold_{request_id}_{r.id}"
+            )
+            model.addConstr(
+                (weighted_sum_kvi[(r.id, service_id)]) * x[request_id, r.id] >= 0,
+                f"kvi_threshold_{request_id}_{r.id}"
+            )
+
+    # Ogni servizio è assegnato a una sola risorsa
+    for request_id, service_id in enumerate(service_requests):
+        model.addConstr(sum(x[request_id, r.id] for r in resources) == 1, f"assign_service_{request_id}")
+
+    # La capacità della risorsa non deve essere superata
+    for r in resources:
+        model.addConstr(
+            sum(x[request_id, r.id] * services[service_requests[request_id]].demand
+                for request_id in range(len(service_requests))) <= r.availability,
+            f"capacity_{r.id}"
+        )
+
+    # Definizione della funzione obiettivo combinata
+    model.setObjective(
+        sum((alpha * weighted_sum_kpi[(r.id, service_requests[request_id])] +
+             (1 - alpha) * weighted_sum_kvi[(r.id, service_requests[request_id])]) * x[request_id, r.id]
+            for request_id in range(len(service_requests)) for r in resources),
+        GRB.MAXIMIZE
+    )
+
+    # Forza l'uso del Branch-and-Bound puro
+    model.setParam("Heuristics", 0.0)  # Disabilita tutte le euristiche
+    model.setParam("Presolve", 0)  # Disabilita la pre-elaborazione
+    model.setParam("Cuts", 0)  # Disabilita i tagli di Gomory e altri
+    model.setParam("MIPFocus", 2)  # Focalizza sulla qualità dei bound
+    model.setParam("VarBranch", 0)  # Usa il branching standard
+    model.setParam("Symmetry", 0)  # Disabilita la riduzione della simmetria
+    model.setParam("RINS", 0)  # Disabilita la ricerca su soluzioni parziali
+    model.setParam("NoRelHeurTime", 0)  # Disabilita le euristiche di rilassamento
+
+    # Ottimizza il modello
+    model.optimize()
+
+    if model.status == GRB.OPTIMAL or model.status == GRB.TIME_LIMIT:
+        kpi_value = sum(
+            weighted_sum_kpi[(r.id, service_requests[request_id])] * x[request_id, r.id].X
+            for request_id in range(len(service_requests)) for r in resources
+        ) * alpha
+        kvi_value = sum(
+            weighted_sum_kvi[(r.id, service_requests[request_id])] * x[request_id, r.id].X
+            for request_id in range(len(service_requests)) for r in resources
+        ) * (1 - alpha)
+
+        print(f"\nSoluzione trovata con Branch-and-Bound puro: KPI={kpi_value}, KVI={kvi_value}")
+
+        save_results_csv(service_requests, services, resources, x, normalized_kpi, normalized_kvi,
+                         weighted_sum_kpi, weighted_sum_kvi, results_dir,
+                         filename=f"results_branch_bound_alpha_{alpha}.csv")
+
+        return kpi_value, kvi_value
+
+    else:
+        print("Il modello non ha trovato una soluzione ottima.")
+        return None, None
+
