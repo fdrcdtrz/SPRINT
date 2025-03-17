@@ -537,6 +537,10 @@ def epsilon_constraint_exact(service_requests, services, resources, normalized_k
             GRB.MAXIMIZE
         )
 
+        model.setParam("MIPFocus", 3)  # meno nodi
+        model.setParam("VarBranch", 2)  # branching aggressivo
+        model.setParam("MIPGap", 0.02)  # ferma ricerca quando il gap è inferiore al 2 percento
+
         # Risolvi il modello
         model.optimize()
         if model.IsMIP == 1:
@@ -639,10 +643,11 @@ def optimize_multiobj_kpi_kvi(service_requests, services, resources, normalized_
         print("Il modello non ha trovato una soluzione ottima.")
         return None, None
 
-def optimize_multiobj_weighted(service_requests, services, resources, normalized_kpi, normalized_kvi,
-                               weighted_sum_kpi, weighted_sum_kvi, alpha, results_dir):
 
-    model = Model("MultiObj_Weighted_KPI_KVI")
+
+def optimize_multiobj_weighted_ip(service_requests, services, resources, normalized_kpi, normalized_kvi,
+                                  weighted_sum_kpi, weighted_sum_kvi, alpha, results_dir):
+    model = Model("MultiObj_Weighted_KPI_KVI_IP")
 
     # Variabili di decisione x[s, r] ∈ {0,1}
     x = model.addVars(
@@ -651,34 +656,25 @@ def optimize_multiobj_weighted(service_requests, services, resources, normalized
         name="x"
     )
 
-    # Vincolo 2: KPI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
+    # Vincoli di KPI e KVI minimi
     for request_id in range(len(service_requests)):
-        service_id = service_requests[request_id]  # ID del servizio associato alla richiesta
-        s = services[service_id]  # Oggetto Service corrispondente
-
+        service_id = service_requests[request_id]
+        s = services[service_id]
         for r in resources:
             model.addConstr(
                 (weighted_sum_kpi[(r.id, service_id)] - s.min_kpi) * x[request_id, r.id] >= 0,
                 f"kpi_threshold_{request_id}_{r.id}"
             )
-
-    # Vincolo 3: KVI offerto dalla risorsa a cui è assegnato servizio deve essere > minimo desiderato
-    for request_id in range(len(service_requests)):
-        service_id = service_requests[request_id]  # ID del servizio associato alla richiesta
-        s = services[service_id]  # Oggetto Service corrispondente
-
-        for r in resources:
             model.addConstr(
                 weighted_sum_kvi[(r.id, service_id)] * x[request_id, r.id] >= 0,
-                f"kpi_threshold_{request_id}_{r.id}"
+                f"kvi_threshold_{request_id}_{r.id}"
             )
 
-    # Vincolo 4: Ogni servizio è assegnato a una sola risorsa
+    # Ogni servizio è assegnato a una sola risorsa
     for request_id, service_id in enumerate(service_requests):
-        s = services[service_id]
         model.addConstr(sum(x[request_id, r.id] for r in resources) == 1, f"assign_service_{request_id}")
 
-    # Vincolo 5: Capacità della risorsa non deve essere superata
+    # Capacità della risorsa non deve essere superata
     for r in resources:
         model.addConstr(
             sum(x[request_id, r.id] * services[service_requests[request_id]].demand
@@ -686,7 +682,7 @@ def optimize_multiobj_weighted(service_requests, services, resources, normalized
             f"capacity_{r.id}"
         )
 
-    # Definizione della funzione obiettivo combinata
+    # Definizione della funzione obiettivo combinata con pesi
     model.setObjective(
         sum((alpha * weighted_sum_kpi[(r.id, service_requests[request_id])] +
              (1 - alpha) * weighted_sum_kvi[(r.id, service_requests[request_id])]) * x[request_id, r.id]
@@ -694,11 +690,31 @@ def optimize_multiobj_weighted(service_requests, services, resources, normalized
         GRB.MAXIMIZE
     )
 
+    # Impostazioni per IP puro senza simplesso o branch-and-bound
+    model.setParam("Heuristics", 0.0)   # Disabilita euristiche
+    model.setParam("Presolve", 0)       # Disabilita pre-elaborazione
+    model.setParam("Cuts", 0)           # Disabilita tutti i tagli
+    model.setParam("Method", 0)        # Disabilita il simplesso
+    model.setParam("NodeMethod", -1)    # Nessun rilassamento continuo nei nodi
+    model.setParam("LPWarmStart", 0)    # Evita l'uso di LP per inizializzare
+    model.setParam("SolutionLimit", 1e9) # Nessun limite artificiale
+    model.setParam("IntegralityFocus", 1) # Forza a lavorare solo con interi
+    model.setParam("Threads", 1)        # Un solo thread
+    model.setParam("MIPGap", 0.0)       # Nessuna tolleranza
+    model.setParam("Symmetry", 0)       # Disabilita riduzione simmetrica
+    model.setParam("VarBranch", 0)      # Nessun branching avanzato
+    model.setParam("RINS", 0)           # Nessuna ricerca su soluzioni parziali
+    model.setParam("NoRelHeurTime", 0)  # Disabilita le euristiche di rilassamento
+    model.setParam("DualReductions", 0) # Disabilita riduzioni duali
+    model.setParam("BarConvTol", 1e-9)  # Maggiore precisione numerica
+    model.setParam("NumericFocus", 3)   # Massima attenzione alla precisione numerica
+    model.setParam('MIPFocus', 1)  # Ottimizzazione senza rilassamento (focalizzato sulla ricerca esaustiva)
+
     # Ottimizza il modello
     model.optimize()
 
     # Verifica se la soluzione è ottimale
-    if model.status == GRB.OPTIMAL:  # Calcoliamo KPI e KVI separatamente
+    if model.status == GRB.OPTIMAL:
         kpi_value = sum(
             weighted_sum_kpi[(r.id, service_requests[request_id])] * x[request_id, r.id].X
             for request_id in range(len(service_requests)) for r in resources
