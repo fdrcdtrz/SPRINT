@@ -348,7 +348,7 @@ if __name__ == '__main__':
                     print(computation_time)
 
             # TIS:  trustworthiness inclusiveness sustainability
-            normalized_kvi, weighted_sum_kvi = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1, -1])  #
+            normalized_kvi, weighted_sum_kvi, energy_sustainability_values, trustworthiness_values, failure_probability_values = compute_normalized_kvi(services, resources, CI=475, signs=[1, -1, -1])  #
 
             normalized_kpi, weighted_sum_kpi = compute_normalized_kpi(services, resources, signs=[-1, 1, -1])  # latenza, data rate e plr
 
@@ -406,17 +406,23 @@ if __name__ == '__main__':
 
             ############ APPROCCI BENCHMARK: GREEDY ASSIGNMENT KPI E RANDOM ASSIGNMENT
 
-            assignment, total_kpi, total_kvi = greedy_assignment_kpi(service_requests, services, resources,
-                                                                     weighted_sum_kpi,
-                                                                     weighted_sum_kvi, max_assignments=10)
+            assignment, total_kpi, total_kvi = greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500)
 
             save_assignment_results(service_requests, assignment, services, resources,
                                     weighted_sum_kpi, weighted_sum_kvi, normalized_kpi, normalized_kvi, total_kpi,
                                     total_kvi,
                                     results_dir=results_dir, filename="greedy_kpi_results.csv")
+            ### TRUSTWORTHINESS ###
+            # assignment, total_kpi, total_kvi =  greedy_kvi_trustworthiness(service_requests, services, resources, trustworthiness_values,
+            #                    weighted_sum_kpi, weighted_sum_kvi, num_seeds=500)
+            #
+            # ### INCLUSIVENESS ###
+            # assignment, total_kpi, total_kvi = greedy_kvi_failure_probability(service_requests, services, resources, failure_probability_values,
+            #                        weighted_sum_kpi, weighted_sum_kvi, num_seeds=500)
 
-            assignment, total_kpi, total_kvi = penalized_greedy_kvi(service_requests, services, resources,
-                                      weighted_sum_kpi, weighted_sum_kvi, num_seeds=500, max_assignments=10, top_k=3)
+            ### SUSTAINABILITY ###
+            assignment, total_kpi, total_kvi = greedy_kvi_sustainability(service_requests, services, resources, energy_sustainability_values,
+                              weighted_sum_kpi, weighted_sum_kvi, num_seeds=500)
 
             save_assignment_results(service_requests, assignment, services, resources,
                                     weighted_sum_kpi, weighted_sum_kvi, normalized_kpi, normalized_kvi, total_kpi,

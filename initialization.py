@@ -100,8 +100,10 @@ def compute_normalized_kvi(services, resources, CI, signs):
 
     normalized_kvi = {}
     weighted_sum_kvi = {}
-    # gains = compute_channel_gain_matrix(services, resources, gain_values)
-    # gains_eavesdroppers = compute_eavesdropper_gain(services, resources, gain_values_eavesdropper)
+    energy_sustainability_values = {}
+    trustworthiness_values = {}
+    failure_probability_values = {}
+
     kvi_values = []  # lista di future liste di lunghezza 3, vanno tutti i kvi garantiti per il servizio s
 
     for j, service in enumerate(services):
@@ -117,6 +119,9 @@ def compute_normalized_kvi(services, resources, CI, signs):
 
             #print(f"For ({service.id}, {resource.id}: trustworthiness di {trustworthiness}, energy "
                   #f"sustainability di {energy_sustainability} in gCO2e, inclusiveness di {failure_probability}")
+            energy_sustainability_values[(resource.id, service.id)] = energy_sustainability
+            trustworthiness_values[(resource.id, service.id)] = trustworthiness
+            failure_probability_values[(resource.id, service.id)] = failure_probability
 
             temp_kvi = [trustworthiness, failure_probability, energy_sustainability]
             kvi_values.append(temp_kvi)
@@ -138,7 +143,7 @@ def compute_normalized_kvi(services, resources, CI, signs):
             #print(v_x)
             weighted_sum_kvi[(resource.id, service.id)] = float(v_x)
 
-    return normalized_kvi, weighted_sum_kvi
+    return normalized_kvi, weighted_sum_kvi, energy_sustainability_values, trustworthiness_values, failure_probability_values
 
 
 def normalize_single_row_kpi(kpi_service, kpi_service_req, resources, index_res, signs, kpi_values):
