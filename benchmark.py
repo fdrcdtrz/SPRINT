@@ -3,6 +3,58 @@ import random
 
 from optimization import *
 
+def penalized_greedy_kvi(service_requests, services, resources,
+                          weighted_sum_kpi, weighted_sum_kvi,
+                          num_seeds=500, max_assignments=10, top_k=3):
+    total_kpi_sum = 0
+    total_kvi_sum = 0
+    final_assignment = {}
+
+    for _ in range(num_seeds):
+        assignment = {}
+        total_kpi = 0
+        total_kvi = 0
+        resource_usage = {n: 0 for n in range(len(resources))}
+
+        # Ordina le richieste in base al miglior KVI ottenibile
+        sorted_requests = sorted(range(len(service_requests)),
+                                 key=lambda req_id: -max(
+                                     weighted_sum_kvi.get((n, service_requests[req_id]), 0)
+                                     for n in range(len(resources))))
+
+        for request_id in sorted_requests:
+            service_id = service_requests[request_id]
+
+            valid_resources = [n for n in range(len(resources)) if resource_usage[n] < max_assignments]
+            if not valid_resources:
+                continue
+
+            # Penalizzazione per carico: scoraggia risorse già molto usate
+            scored = [(n,
+                       weighted_sum_kvi.get((n, service_id), 0) - 0.1 * resource_usage[n])
+                      for n in valid_resources]
+
+            # Seleziona una tra le top-k risorse in base allo score penalizzato
+            scored.sort(key=lambda x: -x[1])
+            top_candidates = scored[:min(top_k, len(scored))]
+            chosen_n = random.choice([n for n, _ in top_candidates])
+            best_resource = resources[chosen_n]
+
+            assignment[request_id] = best_resource.id
+            resource_usage[chosen_n] += 1
+
+            total_kpi += weighted_sum_kpi.get((chosen_n, service_id), 0)
+            total_kvi += weighted_sum_kvi.get((chosen_n, service_id), 0)
+
+        # Ordina l'assegnazione per ID richiesta
+        assignment = dict(sorted(assignment.items()))
+        final_assignment = assignment  # salva solo l'ultimo assignment
+
+        total_kpi_sum += total_kpi
+        total_kvi_sum += total_kvi
+
+    # Restituisce l'ultima assegnazione (ordinata) e la media sui seed
+    return final_assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
 
 def greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500,
                           max_assignments=10):
