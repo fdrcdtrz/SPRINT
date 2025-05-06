@@ -5,8 +5,6 @@ from optimization import *
 
 def greedy_kvi_sustainability(service_requests, services, resources, energy_sustainability_values,
                               weighted_sum_kpi, weighted_sum_kvi):
-    total_kpi_sum = 0
-    total_kvi_sum = 0
 
     availability = {r.id: r.availability for r in resources}
     assignment = {}
@@ -15,8 +13,11 @@ def greedy_kvi_sustainability(service_requests, services, resources, energy_sust
 
     for req_id, service_id in enumerate(service_requests):
         demand = services[service_id].demand
-        # Ordina risorse per sustainability decrescente
-        sorted_resources = sorted(resources, key=lambda r: -energy_sustainability_values.get((r.id, service_id), 0))
+        # Ordina risorse per il kvi decrescente
+        sorted_resources = sorted(
+            resources,
+            key=lambda r: -energy_sustainability_values.get((r.id, service_id), 0)
+        )
 
         for r in sorted_resources:
             if availability[r.id] >= demand:
@@ -26,16 +27,10 @@ def greedy_kvi_sustainability(service_requests, services, resources, energy_sust
                 total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
                 break
 
-    total_kpi_sum += total_kpi
-    total_kvi_sum += total_kvi
-
-    return assignment, total_kpi_sum, total_kvi_sum
+    return assignment, total_kpi, total_kvi
 
 def greedy_kvi_trustworthiness(service_requests, services, resources, trustworthiness_values,
                                weighted_sum_kpi, weighted_sum_kvi):
-    total_kpi_sum = 0
-    total_kvi_sum = 0
-
 
     availability = {r.id: r.availability for r in resources}
     assignment = {}
@@ -44,7 +39,12 @@ def greedy_kvi_trustworthiness(service_requests, services, resources, trustworth
 
     for req_id, service_id in enumerate(service_requests):
         demand = services[service_id].demand
-        sorted_resources = sorted(resources, key=lambda r: -trustworthiness_values.get((r.id, service_id), 0))
+        # Ordina risorse per failure probability decrescente
+        sorted_resources = sorted(
+            resources,
+            key=lambda r: -trustworthiness_values.get((r.id, service_id), 0)
+        )
+
         for r in sorted_resources:
             if availability[r.id] >= demand:
                 assignment[req_id] = r.id
@@ -53,18 +53,10 @@ def greedy_kvi_trustworthiness(service_requests, services, resources, trustworth
                 total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
                 break
 
-    total_kpi_sum += total_kpi
-    total_kvi_sum += total_kvi
-    print(f"Le assegnazioni sono le seguenti: {assignment})")
-
-    return assignment, total_kpi_sum, total_kvi_sum
+    return assignment, total_kpi, total_kvi
 
 def greedy_kvi_failure_probability(service_requests, services, resources, failure_probability_values,
                                    weighted_sum_kpi, weighted_sum_kvi):
-    total_kpi_sum = 0
-    total_kvi_sum = 0
-
-
     availability = {r.id: r.availability for r in resources}
     assignment = {}
     total_kpi = 0
@@ -72,7 +64,12 @@ def greedy_kvi_failure_probability(service_requests, services, resources, failur
 
     for req_id, service_id in enumerate(service_requests):
         demand = services[service_id].demand
-        sorted_resources = sorted(resources, key=lambda r: -failure_probability_values.get((r.id, service_id), 0))
+        # Ordina risorse per incl decrescente
+        sorted_resources = sorted(
+            resources,
+            key=lambda r: -failure_probability_values.get((r.id, service_id), 0)
+        )
+
         for r in sorted_resources:
             if availability[r.id] >= demand:
                 assignment[req_id] = r.id
@@ -81,11 +78,8 @@ def greedy_kvi_failure_probability(service_requests, services, resources, failur
                 total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
                 break
 
-    total_kpi_sum += total_kpi
-    total_kvi_sum += total_kvi
-    print
+    return assignment, total_kpi, total_kvi
 
-    return assignment, total_kpi_sum, total_kvi_sum
 
 def greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi):
     total_kpi_sum = 0
