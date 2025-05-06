@@ -4,124 +4,125 @@ import random
 from optimization import *
 
 def greedy_kvi_sustainability(service_requests, services, resources, energy_sustainability_values,
-                              weighted_sum_kpi, weighted_sum_kvi, num_seeds=500):
+                              weighted_sum_kpi, weighted_sum_kvi):
     total_kpi_sum = 0
     total_kvi_sum = 0
 
-    for _ in range(num_seeds):
-        availability = {r.id: r.availability for r in resources}
-        assignment = {}
-        total_kpi = 0
-        total_kvi = 0
+    availability = {r.id: r.availability for r in resources}
+    assignment = {}
+    total_kpi = 0
+    total_kvi = 0
 
-        for req_id, service_id in enumerate(service_requests):
-            demand = services[service_id].demand
-            # Ordina risorse per sustainability decrescente
-            sorted_resources = sorted(resources, key=lambda r: -energy_sustainability_values.get((r.id, service_id), 0))
-            for r in sorted_resources:
-                if availability[r.id] >= demand:
-                    assignment[req_id] = r.id
-                    availability[r.id] -= demand
-                    total_kpi += weighted_sum_kpi.get((r.id, service_id), 0)
-                    total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
-                    break
+    for req_id, service_id in enumerate(service_requests):
+        demand = services[service_id].demand
+        # Ordina risorse per sustainability decrescente
+        sorted_resources = sorted(resources, key=lambda r: -energy_sustainability_values.get((r.id, service_id), 0))
 
-        total_kpi_sum += total_kpi
-        total_kvi_sum += total_kvi
+        for r in sorted_resources:
+            if availability[r.id] >= demand:
+                assignment[req_id] = r.id
+                availability[r.id] -= demand
+                total_kpi += weighted_sum_kpi.get((r.id, service_id), 0)
+                total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
+                break
 
-    return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
+    total_kpi_sum += total_kpi
+    total_kvi_sum += total_kvi
+
+    return assignment, total_kpi_sum, total_kvi_sum
 
 def greedy_kvi_trustworthiness(service_requests, services, resources, trustworthiness_values,
-                               weighted_sum_kpi, weighted_sum_kvi, num_seeds=500):
+                               weighted_sum_kpi, weighted_sum_kvi):
     total_kpi_sum = 0
     total_kvi_sum = 0
 
-    for _ in range(num_seeds):
-        availability = {r.id: r.availability for r in resources}
-        assignment = {}
-        total_kpi = 0
-        total_kvi = 0
 
-        for req_id, service_id in enumerate(service_requests):
-            demand = services[service_id].demand
-            sorted_resources = sorted(resources, key=lambda r: -trustworthiness_values.get((r.id, service_id), 0))
-            for r in sorted_resources:
-                if availability[r.id] >= demand:
-                    assignment[req_id] = r.id
-                    availability[r.id] -= demand
-                    total_kpi += weighted_sum_kpi.get((r.id, service_id), 0)
-                    total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
-                    break
+    availability = {r.id: r.availability for r in resources}
+    assignment = {}
+    total_kpi = 0
+    total_kvi = 0
 
-        total_kpi_sum += total_kpi
-        total_kvi_sum += total_kvi
+    for req_id, service_id in enumerate(service_requests):
+        demand = services[service_id].demand
+        sorted_resources = sorted(resources, key=lambda r: -trustworthiness_values.get((r.id, service_id), 0))
+        for r in sorted_resources:
+            if availability[r.id] >= demand:
+                assignment[req_id] = r.id
+                availability[r.id] -= demand
+                total_kpi += weighted_sum_kpi.get((r.id, service_id), 0)
+                total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
+                break
 
-    return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
+    total_kpi_sum += total_kpi
+    total_kvi_sum += total_kvi
+    print(f"Le assegnazioni sono le seguenti: {assignment})")
+
+    return assignment, total_kpi_sum, total_kvi_sum
 
 def greedy_kvi_failure_probability(service_requests, services, resources, failure_probability_values,
-                                   weighted_sum_kpi, weighted_sum_kvi, num_seeds=500):
+                                   weighted_sum_kpi, weighted_sum_kvi):
     total_kpi_sum = 0
     total_kvi_sum = 0
 
-    for _ in range(num_seeds):
-        availability = {r.id: r.availability for r in resources}
-        assignment = {}
-        total_kpi = 0
-        total_kvi = 0
 
-        for req_id, service_id in enumerate(service_requests):
-            demand = services[service_id].demand
-            sorted_resources = sorted(resources, key=lambda r: -failure_probability_values.get((r.id, service_id), 0))
-            for r in sorted_resources:
-                if availability[r.id] >= demand:
-                    assignment[req_id] = r.id
-                    availability[r.id] -= demand
-                    total_kpi += weighted_sum_kpi.get((r.id, service_id), 0)
-                    total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
-                    break
+    availability = {r.id: r.availability for r in resources}
+    assignment = {}
+    total_kpi = 0
+    total_kvi = 0
 
-        total_kpi_sum += total_kpi
-        total_kvi_sum += total_kvi
+    for req_id, service_id in enumerate(service_requests):
+        demand = services[service_id].demand
+        sorted_resources = sorted(resources, key=lambda r: -failure_probability_values.get((r.id, service_id), 0))
+        for r in sorted_resources:
+            if availability[r.id] >= demand:
+                assignment[req_id] = r.id
+                availability[r.id] -= demand
+                total_kpi += weighted_sum_kpi.get((r.id, service_id), 0)
+                total_kvi += weighted_sum_kvi.get((r.id, service_id), 0)
+                break
 
-    return assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
+    total_kpi_sum += total_kpi
+    total_kvi_sum += total_kvi
+    print
 
-def greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500):
+    return assignment, total_kpi_sum, total_kvi_sum
+
+def greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi):
     total_kpi_sum = 0
     total_kvi_sum = 0
     final_assignment = {}
 
-    for _ in range(num_seeds):
-        assignment = {}
-        total_kpi = 0
-        total_kvi = 0
-        availability = {r.id: r.availability for r in resources}
+    assignment = {}
+    total_kpi = 0
+    total_kvi = 0
+    availability = {r.id: r.availability for r in resources}
 
-        # Ordina le richieste per KPI massimo
-        sorted_requests = sorted(range(len(service_requests)),
-                                 key=lambda req_id: -max(
-                                     weighted_sum_kpi.get((n, service_requests[req_id]), 0)
-                                     for n in range(len(resources))))
+    # Ordina le richieste per KPI massimo
+    sorted_requests = sorted(range(len(service_requests)),
+                             key=lambda req_id: -max(
+                                 weighted_sum_kpi.get((n, service_requests[req_id]), 0)
+                                 for n in range(len(resources))))
 
-        for request_id in sorted_requests:
-            service_id = service_requests[request_id]
-            demand = services[service_id].demand
+    for request_id in sorted_requests:
+        service_id = service_requests[request_id]
+        demand = services[service_id].demand
 
-            # Seleziona risorse con availability sufficiente
-            candidates = [r for r in resources if availability[r.id] >= demand]
-            if candidates:
-                best_resource = max(candidates, key=lambda r: weighted_sum_kpi.get((resources.index(r), service_id), 0))
-                ridx = resources.index(best_resource)
+        # Seleziona risorse con availability sufficiente
+        candidates = [r for r in resources if availability[r.id] >= demand]
+        if candidates:
+            best_resource = max(candidates, key=lambda r: weighted_sum_kpi.get((resources.index(r), service_id), 0))
+            ridx = resources.index(best_resource)
 
-                assignment[request_id] = best_resource.id
-                availability[best_resource.id] -= demand
-                total_kpi += weighted_sum_kpi.get((ridx, service_id), 0)
-                total_kvi += weighted_sum_kvi.get((ridx, service_id), 0)
+            assignment[request_id] = best_resource.id
+            availability[best_resource.id] -= demand
+            total_kpi += weighted_sum_kpi.get((ridx, service_id), 0)
+            total_kvi += weighted_sum_kvi.get((ridx, service_id), 0)
 
-        final_assignment = dict(sorted(assignment.items()))
-        total_kpi_sum += total_kpi
-        total_kvi_sum += total_kvi
+    final_assignment = dict(sorted(assignment.items()))
+    total_kpi_sum += total_kpi
+    total_kvi_sum += total_kvi
 
-    return final_assignment, total_kpi_sum / num_seeds, total_kvi_sum / num_seeds
+    return final_assignment, total_kpi_sum, total_kvi_sum
 
 # def greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500,
 #                           max_assignments=10):

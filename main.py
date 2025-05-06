@@ -203,8 +203,8 @@ if __name__ == '__main__':
     num_services_type = 8
     delta = 0.1
     num_resources = [80] #[50, 55, 60, 65, 70, 75, 80, 85, 90], [80]
-    weights_kpi = [0.2, 0.2, 0.6]
-    weights_kvi = [0.2, 0.2, 0.6]  # tis
+    weights_kpi = [0.5, 0.2, 0.3]
+    weights_kvi = [0.2, 0.6, 0.2]  # tis
 
     deadlines = [0.002, 0.5, 1, 10, 15]
     deadlines_req = [0.02, 0.6, 1.2, 50]
@@ -258,7 +258,7 @@ if __name__ == '__main__':
 
     for num_services in num_services_list:
         for num_resource in num_resources:
-            results_dir = f"benchmark_{num_services}_{num_resource}_{delta}_WS_WKPI" #f"test_results_{num_services}_{num_resource}_{delta}_WT_WKPI"
+            results_dir = f"benchmark_{num_services}_{num_resource}_{delta}_WT_WKPI" #f"test_results_{num_services}_{num_resource}_{delta}_WT_WKPI"
             # path_onedrive = r"C:\Users\Federica\OneDrive - Politecnico di Bari\phd\works\comnet\Simulazioni"
             path_locale = r"C:\Users\Federica de Trizio\PycharmProjects\CutAndSolve"
             full_path = os.path.join(path_locale, results_dir)
@@ -382,31 +382,31 @@ if __name__ == '__main__':
 
             ############## METODO EPSILON-CONSTRAINT: CALCOLO IDEAL E NADIR POINTS E IMPLEMENTAZIONE DEL METODO ESATTO
 
-            # V_I = optimize_kvi(service_requests, services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
-            #                    results_dir)
-            #
-            # Q_I = optimize_kpi(service_requests, services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi,
-            #                    weighted_sum_kvi, results_dir)
-            #
-            # V_N = v_nadir(service_requests, services, resources, normalized_kpi, normalized_kvi,
-            #               weighted_sum_kpi, weighted_sum_kvi, Q_I, results_dir)
-            #
-            # Q_N = q_nadir(service_requests, services, resources, normalized_kpi,
-            #               normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I, results_dir)
+            V_I = optimize_kvi(service_requests, services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi, weighted_sum_kvi,
+                               results_dir)
+
+            Q_I = optimize_kpi(service_requests, services, resources, normalized_kpi, normalized_kvi, weighted_sum_kpi,
+                               weighted_sum_kvi, results_dir)
+
+            V_N = v_nadir(service_requests, services, resources, normalized_kpi, normalized_kvi,
+                          weighted_sum_kpi, weighted_sum_kvi, Q_I, results_dir)
+
+            Q_N = q_nadir(service_requests, services, resources, normalized_kpi,
+                          normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I, results_dir)
 
 
 
-            # pareto_solutions_exact = epsilon_constraint_exact(service_requests, services, resources, normalized_kpi, normalized_kvi,
-            # weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=delta, results_dir=results_dir)
-            #
-            # plot_pareto_front(pareto_solutions_exact)
-            # pareto_filename = os.path.join(results_dir, "pareto_solutions.csv")
-            # save_pareto_solutions(pareto_solutions_exact, filename=pareto_filename)
+            pareto_solutions_exact = epsilon_constraint_exact(service_requests, services, resources, normalized_kpi, normalized_kvi,
+            weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=delta, results_dir=results_dir)
+
+            plot_pareto_front(pareto_solutions_exact)
+            pareto_filename = os.path.join(results_dir, "pareto_solutions.csv")
+            save_pareto_solutions(pareto_solutions_exact, filename=pareto_filename)
 
 
             ############ APPROCCI BENCHMARK: GREEDY ASSIGNMENT KPI E RANDOM ASSIGNMENT
 
-            assignment, total_kpi, total_kvi = greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi, num_seeds=500)
+            assignment, total_kpi, total_kvi = greedy_assignment_kpi(service_requests, services, resources, weighted_sum_kpi, weighted_sum_kvi)
 
             save_assignment_results(service_requests, assignment, services, resources,
                                     weighted_sum_kpi, weighted_sum_kvi, normalized_kpi, normalized_kvi, total_kpi,
@@ -414,15 +414,15 @@ if __name__ == '__main__':
                                     results_dir=results_dir, filename="greedy_kpi_results.csv")
             ### TRUSTWORTHINESS ###
             # assignment, total_kpi, total_kvi =  greedy_kvi_trustworthiness(service_requests, services, resources, trustworthiness_values,
-            #                    weighted_sum_kpi, weighted_sum_kvi, num_seeds=500)
-            #
-            # ### INCLUSIVENESS ###
-            # assignment, total_kpi, total_kvi = greedy_kvi_failure_probability(service_requests, services, resources, failure_probability_values,
-            #                        weighted_sum_kpi, weighted_sum_kvi, num_seeds=500)
+            #                    weighted_sum_kpi, weighted_sum_kvi)
+
+            ### INCLUSIVENESS ###
+            assignment, total_kpi, total_kvi = greedy_kvi_failure_probability(service_requests, services, resources, failure_probability_values,
+                                   weighted_sum_kpi, weighted_sum_kvi)
 
             ### SUSTAINABILITY ###
-            assignment, total_kpi, total_kvi = greedy_kvi_sustainability(service_requests, services, resources, energy_sustainability_values,
-                              weighted_sum_kpi, weighted_sum_kvi, num_seeds=500)
+            # assignment, total_kpi, total_kvi = greedy_kvi_sustainability(service_requests, services, resources, energy_sustainability_values,
+            #                   weighted_sum_kpi, weighted_sum_kvi)
 
             save_assignment_results(service_requests, assignment, services, resources,
                                     weighted_sum_kpi, weighted_sum_kvi, normalized_kpi, normalized_kvi, total_kpi,
