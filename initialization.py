@@ -119,9 +119,9 @@ def compute_normalized_kvi(services, resources, CI, signs):
 
             #print(f"For ({service.id}, {resource.id}: trustworthiness di {trustworthiness}, energy "
                   #f"sustainability di {energy_sustainability} in gCO2e, inclusiveness di {failure_probability}")
-            energy_sustainability_values[(resource.id, service.id)] = energy_sustainability
-            trustworthiness_values[(resource.id, service.id)] = trustworthiness
-            failure_probability_values[(resource.id, service.id)] = failure_probability
+            energy_sustainability_values[(resource.id, service.id)] = energy_sustainability * service.weights_kvi[2]
+            trustworthiness_values[(resource.id, service.id)] = trustworthiness * service.weights_kvi[0]
+            failure_probability_values[(resource.id, service.id)] = failure_probability * service.weights_kvi[1]
 
             temp_kvi = [trustworthiness, failure_probability, energy_sustainability]
             kvi_values.append(temp_kvi)
