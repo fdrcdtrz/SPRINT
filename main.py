@@ -202,10 +202,10 @@ if __name__ == '__main__':
     num_services_list = [100] # [100], [80, 85, 90, 95, 100, 105, 110, 115, 120]
     num_services_type = 8
     delta = 0.1
-    num_resources = [50, 55, 60, 68, 70, 75, 80, 85, 90] #[50, 55, 60, 65, 70, 75, 80, 85, 90], [80]
+    num_resources = [50, 55, 60, 65, 70, 75, 80, 85, 90] #[50, 55, 60, 65, 70, 75, 80, 85, 90], [80]
     #num_resources = [95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 170, 175, 180, 185, 190, 195, 200]
-    weights_kpi = [0.2, 0.2, 0.6]
-    weights_kvi = [0.2, 0.2, 0.6]  # tis
+    weights_kpi = [0.35, 0.35, 0.3]
+    weights_kvi = [0.2, 0.6, 0.2]  # tis
 
     deadlines = [0.002, 0.5, 1, 10, 15]
     deadlines_req = [0.02, 0.6, 1.2, 50]
@@ -259,14 +259,14 @@ if __name__ == '__main__':
 
     for num_services in num_services_list:
         for num_resource in num_resources:
-            results_dir = f"prova_benchmark_{num_services}_{num_resource}_{delta}_WI_WKPI" #f"test_results_{num_services}_{num_resource}_{delta}_WT_WKPI"
+            results_dir = f"incl_benchmark_{num_services}_{num_resource}_{delta}_WI_WKPI_distr5" #f"test_results_{num_services}_{num_resource}_{delta}_WT_WKPI"
             # path_onedrive = r"C:\Users\Federica\OneDrive - Politecnico di Bari\phd\works\comnet\Simulazioni"
             path_locale = r"C:\Users\Federica de Trizio\PycharmProjects\CutAndSolve"
             full_path = os.path.join(path_locale, results_dir)
             os.makedirs(full_path, exist_ok=True)
 
             # Probabilità assegnate ai servizi
-            probabilities = [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
+            probabilities = [3, 3, 2, 2, 7, 7, 2, 2, 3, 2] #base: [0, 1, 2, 3, 4, 5, 6, 7, 7, 7] 2: [0, 1, 2, 3, 4, 5, 6, 2, 3, 4], 3: [0, 3, 2, 2, 7, 5, 2, 2, 3, 2], 5:[3, 3, 2, 2, 7, 7, 2, 2, 3, 2]
             service_requests = []
 
             # Generazione delle richieste basate sulla distribuzione
