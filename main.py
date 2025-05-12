@@ -199,12 +199,12 @@ class Resource:
 
 if __name__ == '__main__':
 
-    num_services_list = [80] # [100], [80, 85, 90, 95, 100, 105, 110, 115, 120]
+    num_services_list = [80, 85, 90, 95, 100, 105, 110, 115, 120] # [100], [80, 85, 90, 95, 100, 105, 110, 115, 120]
     num_services_type = 8
     delta = 0.05
-    num_resources = [75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20] #[20, 25, 30, 35, 40, 45], [50, 55, 60, 65, 70, 75, 80, 85, 90], [80]
-    weights_kpi = [1/3, 1/3, 1/3]
-    weights_kvi = [1/3, 1/3, 1/3]  # tis
+    num_resources = [80] #[20, 25, 30, 35, 40, 45], [50, 55, 60, 65, 70, 75, 80, 85, 90], [80]
+    weights_kpi = [0.45, 0.45, 0.1]
+    weights_kvi = [0.1, 0.8, 0.1]  # tis
 
     deadlines = [0.002, 0.5, 1, 10, 15]
     deadlines_req = [0.02, 0.6, 1.2, 50]
@@ -259,7 +259,7 @@ if __name__ == '__main__':
 
     for num_services in num_services_list:
         for num_resource in num_resources:
-            results_dir = f"benchmark_{num_services}_{num_resource}_{delta}_ris" #f"test_results_{num_services}_{num_resource}_{delta}_WT_WKPI"
+            results_dir = f"benchmark_{num_services}_{num_resource}_{delta}_incl" #f"test_results_{num_services}_{num_resource}_{delta}_WT_WKPI"
             # path_onedrive = r"C:\Users\Federica\OneDrive - Politecnico di Bari\phd\works\comnet\Simulazioni"
             path_locale = r"C:\Users\Federica de Trizio\PycharmProjects\CutAndSolve"
             full_path = os.path.join(path_locale, results_dir)
@@ -310,38 +310,38 @@ if __name__ == '__main__':
                 carbon_offset_value = carbon_offset_values[chosen_index]
 
                 if carbon_offset_value > (2*1e6) / 365:
-                    P_c_value = 0.04
+                    P_c_value = 0.01
                     u_c_value = 0.1
-                    P_m_value = 0.2
-                    fcp_value = 150e9
+                    P_m_value = 0.1
+                    fcp_value = 40e9
                     lambda_failure_value = 8760
                     lambda_services_per_hour_value = 250
                     likelihood_value = 0.25
-                    deadline_off = 0.001
-                    data_rate_off = 250.0
-                    plr_off_res = 10.0
+                    deadline_off = 0.8
+                    data_rate_off = 85.0
+                    plr_off_res = 20.0
                 elif carbon_offset_value == (2*1e6) / 365:
                     P_c_value = 0.02
                     u_c_value = 0.5
-                    P_m_value = 0.15
+                    P_m_value = 0.2
                     fcp_value = 100e9
                     lambda_failure_value = 45000
                     lambda_services_per_hour_value = 200
                     likelihood_value = 0.5
-                    deadline_off = deadlines_off[chosen_index]
-                    data_rate_off = data_rates_off[chosen_index]
-                    plr_off_res = plr_off[chosen_index]
+                    deadline_off = 0.4
+                    data_rate_off = 110.0
+                    plr_off_res = 20.0
                 else:
-                    P_c_value = 0.02
-                    u_c_value = 1
+                    P_c_value = 0.04
+                    u_c_value = 0.8
                     P_m_value = 0.2
-                    fcp_value = 40e9
+                    fcp_value = 150e9
                     lambda_failure_value = 45000
                     lambda_services_per_hour_value = 150
                     likelihood_value = likelihood_values[chosen_index]
-                    deadline_off = 20
-                    data_rate_off = 85.0
-                    plr_off_res = 40.0
+                    deadline_off = 0.01
+                    data_rate_off = 250.0
+                    plr_off_res = 10.0
 
                 # P_c_value = P_c_values[chosen_index]
                 # u_c_value = u_c_values[chosen_index]
@@ -432,14 +432,12 @@ if __name__ == '__main__':
                           normalized_kvi, weighted_sum_kpi, weighted_sum_kvi, V_I, results_dir)
 
 
-
             pareto_solutions_exact = epsilon_constraint_exact(service_requests, services, resources, normalized_kpi, normalized_kvi,
             weighted_sum_kpi, weighted_sum_kvi, Q_N, Q_I, delta=delta, results_dir=results_dir)
 
-            plot_pareto_front(pareto_solutions_exact)
             pareto_filename = os.path.join(results_dir, "pareto_solutions.csv")
             save_pareto_solutions(pareto_solutions_exact, filename=pareto_filename)
-
+            #plot_pareto_front(pareto_solutions_exact)
 
             ############ APPROCCI BENCHMARK: GREEDY ASSIGNMENT KPI E RANDOM ASSIGNMENT
 

@@ -91,13 +91,57 @@ def save_epsilon_constraint(service_requests, services, resources, x, normalized
     df.to_csv(filepath, index=False)
     print(f"Salvato: {filepath}")
 
-def save_pareto_solutions(pareto_solutions, filename="pareto_solutions.csv"):
-    pareto_solutions.sort()
+#def save_pareto_solutions(pareto_solutions, filename="pareto_solutions.csv"):
+    # pareto_solutions.sort()
 
+    # with open(filename, mode='w', newline='') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerow(["KPI_Totale", "KVI_Totale"])
+    #     writer.writerows(pareto_solutions)
+
+def pareto_filter_maximization(points):
+    pareto = []
+    for i, (x_i, y_i) in enumerate(points):
+        dominated = False
+        for j, (x_j, y_j) in enumerate(points):
+            if j != i:
+                if x_j >= x_i and y_j >= y_i and (x_j > x_i or y_j > y_i):
+                    dominated = True
+                    break
+        if not dominated:
+            pareto.append((x_i, y_i))
+    return pareto
+
+def save_pareto_solutions(points, filename="pareto_solutions.csv"):
+    # Salva tutti i punti originali
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["KPI_Totale", "KVI_Totale"])
-        writer.writerows(pareto_solutions)
+        writer.writerows(points)
+
+    # Leggi e filtra
+    df = pd.read_csv(filename)
+    raw_points = df[["KPI_Totale", "KVI_Totale"]].values.tolist()
+    non_dominated = pareto_filter_maximization(raw_points)
+
+    # Ordina per KPI_Totale (opzionale, per curva continua)
+    non_dominated = sorted(non_dominated, key=lambda x: x[0])
+
+    # Salva i punti filtrati
+    df_pareto = pd.DataFrame(non_dominated, columns=["KPI_Totale", "KVI_Totale"])
+    df_pareto.to_csv(filename, index=False)
+
+    # Plot
+    plt.figure(figsize=(8, 6))
+    kpi, kvi = zip(*non_dominated)
+    plt.plot(kpi, kvi, 'bo-', label="Pareto Optimal-Set")
+    plt.xlabel("KPI Totale")
+    plt.ylabel("KVI Totale")
+    plt.title("Pareto Front")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
 
 def plot_pareto_front(pareto_solutions):
@@ -539,7 +583,7 @@ def epsilon_constraint_exact(service_requests, services, resources, normalized_k
 
         model.setParam("MIPFocus", 3)  # meno nodi
         model.setParam("VarBranch", 2)  # branching aggressivo
-        model.setParam("MIPGap", 0.02)  # ferma ricerca quando il gap è inferiore al 2 percento
+        model.setParam("MIPGap", 0.04)  # ferma ricerca quando il gap è inferiore al 2.8% percento
 
         # Risolvi il modello
         model.optimize()
